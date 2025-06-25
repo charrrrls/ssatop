@@ -20,14 +20,21 @@ matplotlib.rcParams['axes.unicode_minus'] = False  # 解决负号显示问题
 
 def normalize_data(data):
     """
-    对数据进行归一化处理，将数据缩放到 [0, 1] 范围
+    对数据进行归一化处理，保持波形的中心对称特性
+    将数据缩放到 [-1, 1] 范围，使原点仍然是零点
     """
     data = np.array(data)
-    min_val = np.min(data)
-    max_val = np.max(data)
-    if max_val - min_val == 0:  # 避免除以零的情况
+    
+    # 先移除基线偏移
+    baseline = np.mean(data[:100])  # 使用前100个点的均值作为基线
+    data = data - baseline
+    
+    # 按照最大绝对值归一化到[-1, 1]范围
+    max_abs = np.max(np.abs(data))
+    if max_abs == 0:  # 避免除以零的情况
         return np.zeros_like(data)
-    normalized_data = (data - min_val) / (max_val - min_val)
+    
+    normalized_data = data / max_abs
     return normalized_data
     
 

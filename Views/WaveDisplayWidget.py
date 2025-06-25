@@ -570,7 +570,17 @@ class WaveDisplayWidget(QWidget):
             
         # 计算FFT
         n = len(self.current_data)
-        self.fft_data = np.abs(fft.fft(self.current_data))
+        
+        # 先移除基线偏移
+        baseline = np.mean(self.current_data[:100])
+        data_centered = self.current_data - baseline
+        
+        # 应用窗函数减少频谱泄漏
+        window = np.hanning(n)
+        windowed_data = data_centered * window
+        
+        # 计算FFT
+        self.fft_data = np.abs(fft.fft(windowed_data))
         self.fft_data = self.fft_data[:n//2]  # 只取一半（实数信号的频谱是对称的）
         
         # 计算频率轴
@@ -604,7 +614,9 @@ class WaveDisplayWidget(QWidget):
         elif self.fft_radio.isChecked():
             # 频谱分析
             if self.freq_axis is not None and self.fft_data is not None:
-                ax.plot(self.freq_axis, self.fft_data, 'r-', label='频谱')
+                # 排除频谱中前5%的低频分量，避免直流分量和极低频噪声影响显示效果
+                start_idx = max(1, int(len(self.fft_data) * 0.05))
+                ax.plot(self.freq_axis[start_idx:], self.fft_data[start_idx:], 'r-', label='频谱')
                 ax.set_title('频谱分析')
                 ax.set_xlabel('频率 (Hz)')
                 ax.set_ylabel('幅度')
@@ -613,14 +625,17 @@ class WaveDisplayWidget(QWidget):
         elif self.spectrogram_radio.isChecked():
             # 时频图
             if self.current_data is not None and self.time_axis is not None:
-                # 计算并绘制时频图
+                # 计算并绘制时频图，丢弃前0.5%的功率以避免过强信号压缩显示比例
                 sample_rate = 1 / (self.time_axis[1] - self.time_axis[0])
-                ax.specgram(self.current_data, NFFT=256, Fs=sample_rate, 
-                           noverlap=128, cmap='viridis')
+                # 增加vmin参数，设置最小阈值，忽略过大幅度
+                Pxx, freqs, bins, im = ax.specgram(self.current_data, NFFT=256, Fs=sample_rate, 
+                           noverlap=128, cmap='viridis', 
+                           vmin=None, scale='dB')  # scale='dB'使用分贝刻度，降低动态范围差异
                 ax.set_title('时频分析')
                 ax.set_xlabel('时间 (s)')
                 ax.set_ylabel('频率 (Hz)')
-                self.fig.colorbar(ax.images[0], ax=ax, label='功率/频率 (dB/Hz)')
+                ax.set_ylim(0, min(500, sample_rate/2))  # 限制频率显示范围
+                self.fig.colorbar(im, ax=ax, label='功率/频率 (dB/Hz)')
         
         # 更新显示选项
         self.update_display_options()
@@ -772,16 +787,44 @@ class WaveDisplayWidget(QWidget):
                     f, Pxx = signal.welch(self.current_data, fs=sample_rate, window=window,
                                          nperseg=window_size, scaling='spectrum')
                     Pxx = np.sqrt(Pxx)  # 取平方根得到幅度谱
+                    
+                    # 忽略前5%的频率点，避免直流和极低频分量影响显示
+                    cutoff_idx = max(1, int(0.05 * len(f)))
+                    f = f[cutoff_idx:]
+                    Pxx = Pxx[cutoff_idx:]
+                    
                     ylabel = "幅度"
                 elif spectrum_type == "功率谱":
                     logger.info("计算功率谱")
                     f, Pxx = signal.welch(self.current_data, fs=sample_rate, window=window,
                                          nperseg=window_size)
-                    ylabel = "功率密度 (V²/Hz)"
+                    
+                    # 忽略前5%的频率点，避免直流和极低频分量影响显示
+                    cutoff_idx = max(1, int(0.05 * len(f)))
+                    f = f[cutoff_idx:]
+                    Pxx = Pxx[cutoff_idx:]
+                    
+                    # 对数转换，降低动态范围
+                    if scale_type == "对数":
+                        Pxx = 10 * np.log10(Pxx + 1e-10)  # 加一个小值避免log(0)
+                        ylabel = "功率密度 (dB)"
+                    else:
+                        ylabel = "功率密度"
                 else:  # 相位谱
                     logger.info("计算相位谱")
+                    # 前处理：移除基线和应用窗函数
+                    baseline = np.mean(self.current_data[:100])
+                    data_centered = self.current_data[:window_size] - baseline
+                    windowed_data = data_centered * window
+                    
                     f = np.fft.rfftfreq(window_size, d=1/sample_rate)
-                    Pxx = np.angle(np.fft.rfft(self.current_data[:window_size] * window))
+                    Pxx = np.angle(np.fft.rfft(windowed_data))
+                    
+                    # 忽略前几个频率点
+                    cutoff_idx = max(1, int(0.05 * len(f)))
+                    f = f[cutoff_idx:]
+                    Pxx = Pxx[cutoff_idx:]
+                    
                     ylabel = "相位 (rad)"
                 
                 # 绘制频谱
