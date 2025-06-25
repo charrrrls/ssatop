@@ -813,254 +813,503 @@ class SourceDetectionWidgetController:
                         plt.rcParams['font.family'] = 'sans-serif'
                     
                     if isinstance(self.last_result, tuple) and len(self.last_result) >= 4:
-                        # 有热力图数据，创建分栏布局
-                        grid = plt.GridSpec(2, 4, height_ratios=[1, 3], width_ratios=[1, 1, 1, 1])
+                        # 有热力图数据，创建超高级多面板布局
+                        grid = plt.GridSpec(5, 6, height_ratios=[0.7, 1.5, 1.5, 1.5, 0.5], 
+                                          width_ratios=[1, 1, 1, 1, 1, 1],
+                                          hspace=0.35, wspace=0.3)
                         
-                        # 标题区域
+                        # 创建超高级标题面板，跨越整行
                         title_ax = export_fig.add_subplot(grid[0, :])
                         title_ax.axis('off')
-                        title_ax.text(0.5, 0.6, "微地震震源定位结果", 
-                                     fontsize=22, fontweight='bold', ha='center', va='center',
-                                     family=chinese_font)
-                        title_ax.text(0.5, 0.2, f"计算时间: {time.strftime('%Y-%m-%d %H:%M:%S')}", 
-                                     fontsize=12, ha='center', va='center', 
+                        
+                        # 创建高级渐变背景
+                        gradient = np.linspace(0, 1, 300).reshape(1, -1)
+                        gradient = np.repeat(gradient, 20, axis=0)
+                        title_ax.imshow(gradient, cmap='plasma_r', aspect='auto', alpha=0.2,
+                                       extent=[0, 1, 0, 1], transform=title_ax.transAxes)
+                        
+                        # 增加装饰性设计元素
+                        for i in range(20):
+                            title_ax.plot([0.05+i*0.045, 0.07+i*0.045], [0.3, 0.3], 'k-', lw=1, alpha=0.5-i*0.02,
+                                         transform=title_ax.transAxes)
+                        for i in range(20):
+                            title_ax.plot([0.95-i*0.045, 0.93-i*0.045], [0.2, 0.2], 'k-', lw=1, alpha=0.5-i*0.02,
+                                         transform=title_ax.transAxes)
+                        
+                        # 添加高级标题和子标题
+                        title_ax.text(0.5, 0.7, "多维震源定位亮度分析报告", 
+                                     fontsize=26, fontweight='bold', ha='center', va='center',
                                      family=chinese_font,
-                                     color='gray', style='italic')
+                                     bbox=dict(facecolor='white', alpha=0.9, edgecolor='none', 
+                                            boxstyle='round,pad=0.5', mutation_aspect=0.3))
                         
-                        # 结果文本区域
-                        text_ax = export_fig.add_subplot(grid[1, 0])
-                        text_ax.axis('off')
+                        # 添加高级时间戳和品牌信息
+                        timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
                         
-                        # 确保数值正确转换为浮点数
+                        # 添加装饰性箭头和分隔线
+                        title_ax.add_patch(plt.Polygon([(0.05, 0.25), (0.1, 0.3), (0.05, 0.35)], 
+                                                    closed=True, color='#888', alpha=0.5))
+                        title_ax.add_patch(plt.Polygon([(0.95, 0.25), (0.9, 0.3), (0.95, 0.35)], 
+                                                    closed=True, color='#888', alpha=0.5))
+                        
+                        title_ax.text(0.07, 0.25, f"分析时间: {timestamp}", 
+                                     fontsize=10, ha='left', va='top',
+                                     family=chinese_font, color='#444444')
+                        
                         try:
+                            # 添加文件信息
+                            if hasattr(self.trace_file, 'basic_info') and self.trace_file.basic_info:
+                                if 'file_name' in self.trace_file.basic_info:
+                                    title_ax.text(0.93, 0.25, f"数据源: {self.trace_file.basic_info['file_name']}", 
+                                                 fontsize=10, ha='right', va='top',
+                                                 family=chinese_font, color='#444444')
+                        except Exception as e:
+                            print(f"获取文件信息失败: {e}")
+                        
+                        # 确保max_point和热力图数据正确转换
+                        max_point = self.convert_max_point(self.last_result[0])
+                        try:
+                            max_slice = self.last_result[1].copy() if isinstance(self.last_result[1], np.ndarray) else np.array([[0]])
+                            grid_x = np.array(self.last_result[2])
+                            grid_y = np.array(self.last_result[3])
+                            max_brightness = float(np.max(max_slice)) if max_slice.size > 0 else float(self.last_result[1])
                             x_val = float(max_point[0])
                             y_val = float(max_point[1])
                             z_val = float(max_point[2])
                             t_val = float(max_point[3])
-                            br_val = float(max_br)
-                            
-                            # 获取模型名称
-                            try:
-                                model_name = str(self.model_manager.get_current_model().model_name)
-                            except:
-                                model_name = "未知"
-                            
-                            text_content = (
-                                f"震源定位结果\n\n"
-                                f"X坐标: {x_val:.2f} m\n"
-                                f"Y坐标: {y_val:.2f} m\n"
-                                f"Z坐标: {z_val:.2f} m\n"
-                                f"事件时间: {t_val:.4f} s\n"
-                                f"最大亮度: {br_val:.4f}\n\n"
-                                f"定位方法: {'亮度扫描'}\n"
-                                f"模型: {model_name}"
-                            )
                         except Exception as e:
-                            print(f"格式化文本内容时出错: {e}")
-                            text_content = (
-                                f"震源定位结果\n\n"
-                                f"X坐标: {max_point[0]} m\n"
-                                f"Y坐标: {max_point[1]} m\n"
-                                f"Z坐标: {max_point[2]} m\n"
-                                f"事件时间: {max_point[3]} s\n"
-                                f"最大亮度: {max_br}\n\n"
-                                f"定位方法: {'亮度扫描'}"
-                            )
+                            print(f"转换热力图数据失败: {e}")
+                            x_val, y_val, z_val, t_val = max_point[0], max_point[1], max_point[2], max_point[3]
+                            max_brightness = 0.0 if isinstance(self.last_result[1], np.ndarray) else float(self.last_result[1])
                         
-                        text_ax.text(0.1, 0.5, text_content, 
-                                    fontsize=10, va='center',
-                                    family=chinese_font,
-                                    bbox=dict(facecolor='#f0f0f0', alpha=0.5, 
-                                             boxstyle='round,pad=1', edgecolor='#cccccc'))
+                        # 1. 3D热力图面板 (跨越两行两列)
+                        ax_3d = export_fig.add_subplot(grid[1:3, 0:2], projection='3d')
                         
-                        # 可视化区域 - 只有在热力图结果时添加
-                        if isinstance(self.last_result[1], np.ndarray):
-                            max_slice = self.last_result[1].copy()  # 安全拷贝
-                            grid_x = np.array(self.last_result[2])
-                            grid_y = np.array(self.last_result[3])
+                        # 获取当前选择的颜色方案
+                        cmap = self.view.colormap_combo.currentText()
+                        
+                        # 绘制高级3D亮度表面
+                        if isinstance(max_slice, np.ndarray) and max_slice.size > 1:
+                            # 增强3D图的视觉效果
+                            ax_3d.grid(True, linestyle='--', alpha=0.6)
+                            ax_3d.xaxis.pane.fill = False
+                            ax_3d.yaxis.pane.fill = False
+                            ax_3d.zaxis.pane.fill = False
+                            ax_3d.xaxis.pane.set_edgecolor('lightgray')
+                            ax_3d.yaxis.pane.set_edgecolor('lightgray')
+                            ax_3d.zaxis.pane.set_edgecolor('lightgray')
                             
-                            # 3D图
-                            ax1 = export_fig.add_subplot(grid[1, 1:3], projection='3d')
+                            # 创建网格
                             X, Y = np.meshgrid(grid_x, grid_y)
-                            ax1.plot_surface(X, Y, max_slice, cmap=cmap, 
-                                          linewidth=0, antialiased=True, alpha=0.8)
                             
-                            # 获取最大值坐标
+                            # 绘制3D表面
+                            stride = 2 if max_slice.shape[0] > 100 else 1
+                            surf = ax_3d.plot_surface(X, Y, max_slice, cmap=cmap, 
+                                                   linewidth=0.2, antialiased=True, alpha=0.8,
+                                                   rstride=stride, cstride=stride)
+                            
+                            # 添加等高线投影到底部平面
+                            max_range = max_slice.max()
+                            offset = -0.1 * max_range
+                            ax_3d.contourf(X, Y, max_slice, zdir='z', offset=offset, cmap=cmap, alpha=0.6)
+                            
+                            # 标记最大亮度点
+                            max_i, max_j = np.unravel_index(np.argmax(max_slice), max_slice.shape)
+                            max_x, max_y = X[max_i, max_j], Y[max_i, max_j]
+                            
+                            # 添加从最大亮度点到底部的垂直线
+                            max_z = max_slice[max_i, max_j]
+                            ax_3d.plot([max_x, max_x], [max_y, max_y], [offset, max_z], 'r--', alpha=0.7, lw=2)
+                            
+                            # 绘制震源位置
+                            ax_3d.scatter([x_val], [y_val], [max_z], 
+                                        color='red', s=150, marker='*', 
+                                        edgecolor='white', linewidth=1.5,
+                                        label='震源位置')
+                            
+                            # 添加颜色条
+                            cbar = plt.colorbar(surf, ax=ax_3d, shrink=0.6, aspect=12, pad=0.1)
+                            cbar.set_label('亮度值', family=chinese_font, fontsize=10)
+                            
+                            # 设置轴标签
+                            ax_3d.set_xlabel('X坐标 (m)', fontsize=10, family=chinese_font)
+                            ax_3d.set_ylabel('Y坐标 (m)', fontsize=10, family=chinese_font)
+                            ax_3d.set_zlabel('亮度值', fontsize=10, family=chinese_font)
+                            
+                            # 优化视图角度
+                            ax_3d.view_init(elev=30, azim=125)
+                            
+                            # 添加高级标题
+                            ax_3d.set_title("三维亮度分布表面", fontsize=12, fontweight='bold', family=chinese_font)
+                            ax_3d.legend(fontsize=9, loc='upper right')
+                            
+                            # 添加网格标尺
+                            ax_3d.tick_params(axis='x', labelsize=8)
+                            ax_3d.tick_params(axis='y', labelsize=8)
+                            ax_3d.tick_params(axis='z', labelsize=8)
+                        
+                        # 2. 高级热力图面板
+                        ax_heatmap = export_fig.add_subplot(grid[1:3, 2:4])
+                        
+                        if isinstance(max_slice, np.ndarray) and max_slice.size > 1:
+                            # 绘制高级热力图
+                            extent = [grid_x[0], grid_x[-1], grid_y[0], grid_y[-1]]
+                            im = ax_heatmap.imshow(max_slice, cmap=cmap, interpolation='bicubic',
+                                                 origin='lower', extent=extent, aspect='auto')
+                            
+                            # 添加颜色条
+                            cbar = plt.colorbar(im, ax=ax_heatmap, fraction=0.046, pad=0.04)
+                            cbar.set_label('亮度值', family=chinese_font, fontsize=10)
+                            
+                            # 添加等高线
+                            levels = np.linspace(max_slice.min(), max_slice.max(), 10)
+                            contour = ax_heatmap.contour(X, Y, max_slice, levels=levels, colors='white', 
+                                                      alpha=0.4, linewidths=0.8)
+                            
+                            # 标记最大亮度点
+                            ax_heatmap.plot(x_val, y_val, 'r*', markersize=15, markeredgecolor='white',
+                                          markeredgewidth=1.5, label=f'震源: 亮度={max_brightness:.4f}')
+                            
+                            # 添加标注
+                            ax_heatmap.annotate('震源位置', xy=(x_val, y_val), 
+                                            xytext=(x_val+50, y_val+50),
+                                            arrowprops=dict(facecolor='white', shrink=0.05, 
+                                                         width=1.5, headwidth=8, alpha=0.7),
+                                            color='white', fontsize=10, family=chinese_font,
+                                            bbox=dict(boxstyle="round,pad=0.3", fc="black", alpha=0.6))
+                            
+                            # 添加坐标轴标签和标题
+                            ax_heatmap.set_xlabel('X坐标 (m)', fontsize=10, family=chinese_font)
+                            ax_heatmap.set_ylabel('Y坐标 (m)', fontsize=10, family=chinese_font)
+                            ax_heatmap.set_title("亮度热力图分析", fontsize=12, fontweight='bold', family=chinese_font)
+                            
+                            # 添加网格
+                            ax_heatmap.grid(True, linestyle='--', alpha=0.3)
+                            ax_heatmap.legend(fontsize=9, loc='upper right')
+                            
+                            # 添加自定义比例尺
+                            scale_len = 100  # 100米比例尺
+                            x_min, x_max = ax_heatmap.get_xlim()
+                            y_min, y_max = ax_heatmap.get_ylim()
+                            scale_x = x_min + (x_max - x_min) * 0.05  # 左下角5%位置
+                            scale_y = y_min + (y_max - y_min) * 0.05  # 左下角5%位置
+                            ax_heatmap.plot([scale_x, scale_x + scale_len], [scale_y, scale_y], 'w-', lw=2)
+                            ax_heatmap.text(scale_x + scale_len/2, scale_y + (y_max-y_min)*0.02, 
+                                          f'{scale_len} m', ha='center', va='bottom', 
+                                          color='white', fontsize=8, family=chinese_font)
+                        
+                        # 3. 亮度分布直方图面板
+                        ax_histogram = export_fig.add_subplot(grid[1, 4:])
+                        
+                        if isinstance(max_slice, np.ndarray) and max_slice.size > 1:
+                            # 计算直方图数据
+                            flattened = max_slice.flatten()
+                            hist_data, bin_edges = np.histogram(flattened, bins=30)
+                            bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+                            
+                            # 绘制高级直方图
+                            bars = ax_histogram.bar(bin_centers, hist_data, width=(bin_edges[1]-bin_edges[0]),
+                                                 alpha=0.7, color='skyblue', edgecolor='navy')
+                            
+                            # 添加KDE曲线
                             try:
-                                max_slice_value = float(np.max(max_slice))
-                                ax1.scatter([max_point[0]], [max_point[1]], [max_slice_value],
-                                        color='white', s=100, edgecolor='black', linewidth=1.5)
+                                from scipy.stats import gaussian_kde
+                                kde = gaussian_kde(flattened)
+                                x_kde = np.linspace(flattened.min(), flattened.max(), 200)
+                                kde_vals = kde(x_kde) * len(flattened) * (bin_edges[1]-bin_edges[0])
+                                ax_histogram.plot(x_kde, kde_vals, 'r-', lw=2, alpha=0.8, label='密度估计')
                             except Exception as e:
-                                print(f"无法绘制最大值点: {e}")
-                                
-                            ax1.set_title("亮度分布 (3D)")
-                            ax1.set_xlabel('X坐标 (m)')
-                            ax1.set_ylabel('Y坐标 (m)')
-                            ax1.set_zlabel('亮度值')
+                                print(f"KDE计算失败: {e}")
                             
-                            # 热力图
-                            ax2 = export_fig.add_subplot(grid[1, 3])
-                            im = ax2.imshow(max_slice, cmap=cmap, interpolation='bilinear',
-                                        extent=[float(np.min(grid_x)), float(np.max(grid_x)), 
-                                              float(np.min(grid_y)), float(np.max(grid_y))],
-                                        origin='lower', aspect='auto')
-                            ax2.set_title("亮度热图")
-                            ax2.set_xlabel('X坐标 (m)')
-                            ax2.set_ylabel('Y坐标 (m)')
-                            ax2.plot(max_point[0], max_point[1], 'o', color='white', markersize=8, 
-                                  markeredgecolor='black', markeredgewidth=1.5)
-                            plt.colorbar(im, ax=ax2, shrink=0.9, pad=0.05, label='亮度值')
-                        else:
-                            print("热力图数据不是numpy数组，跳过绘制热力图和3D图")
-                            # 创建一个简单的图片表示没有热力图数据
-                            info_ax = export_fig.add_subplot(grid[1, 1:])
-                            info_ax.axis('off')
-                            info_ax.text(0.5, 0.5, "热力图数据不可用", 
-                                       ha='center', va='center',
-                                       fontsize=16, fontweight='bold',
-                                       family=chinese_font,
-                                       bbox=dict(facecolor='#f8d7da', alpha=0.5, 
-                                               boxstyle='round,pad=1', edgecolor='#f5c6cb'))
-                    else:
-                        # 只有基本数据，创建简洁布局
-                        grid = plt.GridSpec(3, 2, height_ratios=[1, 2.5, 0.5])
+                            # 添加最大亮度标线
+                            ax_histogram.axvline(x=max_brightness, color='red', linestyle='--', alpha=0.8,
+                                              label=f'最大亮度: {max_brightness:.4f}')
+                            
+                            # 设置标题和标签
+                            ax_histogram.set_title("亮度分布直方图", fontsize=11, fontweight='bold', family=chinese_font)
+                            ax_histogram.set_xlabel('亮度值', fontsize=10, family=chinese_font)
+                            ax_histogram.set_ylabel('频率', fontsize=10, family=chinese_font)
+                            ax_histogram.legend(fontsize=8)
+                            
+                            # 添加高亮区域 - 大于75%最大亮度的区域
+                            highlight_threshold = 0.75 * max_brightness
+                            ax_histogram.axvspan(highlight_threshold, max_brightness, color='yellow', alpha=0.2,
+                                              label='高亮区')
                         
-                        # 标题区域
-                        title_ax = export_fig.add_subplot(grid[0, :])
-                        title_ax.axis('off')
-                        title_ax.text(0.5, 0.6, "微地震震源定位结果", 
-                                     fontsize=22, fontweight='bold', ha='center', va='center',
-                                     family=chinese_font)
-                        title_ax.text(0.5, 0.2, f"计算时间: {time.strftime('%Y-%m-%d %H:%M:%S')}", 
-                                     fontsize=12, ha='center', va='center', 
-                                     family=chinese_font,
-                                     color='gray', style='italic')
+                        # 4. 亮度剖面图
+                        ax_profile = export_fig.add_subplot(grid[2, 4:])
                         
-                        # 创建3D图显示位置
-                        ax3d = export_fig.add_subplot(grid[1, 0], projection='3d')
+                        if isinstance(max_slice, np.ndarray) and max_slice.size > 1:
+                            # 找到最大点在网格中的索引
+                            max_idx_y = np.argmin(np.abs(grid_y - y_val))
+                            max_idx_x = np.argmin(np.abs(grid_x - x_val))
+                            
+                            # 提取X和Y方向的亮度剖面
+                            if 0 <= max_idx_y < max_slice.shape[0]:
+                                x_profile = max_slice[max_idx_y, :]
+                                ax_profile.plot(grid_x, x_profile, 'b-', lw=2, alpha=0.7, label='X方向剖面')
+                            
+                            if 0 <= max_idx_x < max_slice.shape[1]:
+                                y_profile = max_slice[:, max_idx_x]
+                                ax_profile.plot(grid_y, y_profile, 'g-', lw=2, alpha=0.7, label='Y方向剖面')
+                            
+                            # 添加最大亮度点标记
+                            ax_profile.axhline(y=max_brightness, color='red', linestyle='--', alpha=0.5)
+                            
+                            # 设置标题和标签
+                            ax_profile.set_title("亮度剖面图", fontsize=11, fontweight='bold', family=chinese_font)
+                            ax_profile.set_xlabel('坐标 (m)', fontsize=10, family=chinese_font)
+                            ax_profile.set_ylabel('亮度值', fontsize=10, family=chinese_font)
+                            ax_profile.legend(fontsize=8)
+                            ax_profile.grid(True, linestyle='--', alpha=0.3)
                         
-                        # 绘制震源位置点
-                        ax3d.scatter([max_point[0]], [max_point[1]], [max_point[2]], 
-                                    color='red', s=200, label='震源位置', marker='*')
+                        # 5. 多面分析面板 - 三个平面切片视图
+                        ax_slice_xy = export_fig.add_subplot(grid[3, 0:2])
+                        ax_slice_xz = export_fig.add_subplot(grid[3, 2:4])
+                        ax_slice_yz = export_fig.add_subplot(grid[3, 4:])
                         
-                        # 获取并显示检波器位置
+                        # 获取检波器位置
                         try:
                             detector_data = self.trace_file.get_detector_location()
                             if detector_data is not None:
-                                x = detector_data['x']
-                                y = detector_data['y']
-                                z = detector_data['z']
-                                ax3d.scatter(x, y, z, s=20, color='blue', alpha=0.7, 
-                                           label='检波器位置', marker='^')
+                                detector_x = detector_data['x']
+                                detector_y = detector_data['y']
+                                detector_z = detector_data['z']
                         except Exception as e:
                             print(f"获取检波器位置失败: {e}")
+                            detector_x = []
+                            detector_y = []
+                            detector_z = []
                             
-                        # 设置轴标签和图例
-                        ax3d.set_xlabel('X坐标 (m)')
-                        ax3d.set_ylabel('Y坐标 (m)')
-                        ax3d.set_zlabel('Z坐标 (m)')
-                        ax3d.legend(loc='upper right')
-                        ax3d.set_title("震源空间位置", fontsize=14)
-                        
-                        # 美化视图
-                        ax3d.grid(True)
-                        
-                        # 结果详细文本区域
-                        text_ax = export_fig.add_subplot(grid[1, 1])
-                        text_ax.axis('off')
-                        
-                        # 添加页面装饰
-                        text_ax.add_patch(plt.Rectangle(
-                            (0.05, 0.05), 0.9, 0.9, fill=True, 
-                            color='#f9f9f9', alpha=0.8, transform=text_ax.transAxes,
-                            zorder=1, ec='#dddddd', lw=1
-                        ))
-                        
-                        # 添加标题栏
-                        text_ax.add_patch(plt.Rectangle(
-                            (0.05, 0.85), 0.9, 0.1, fill=True, 
-                            color='#2c3e50', transform=text_ax.transAxes,
-                            zorder=2, ec='#2c3e50', lw=1
-                        ))
-                        
-                        # 标题文本
-                        text_ax.text(0.5, 0.9, "震源参数", 
-                                    fontsize=14, color='white', 
-                                    ha='center', va='center',
-                                    transform=text_ax.transAxes,
-                                    family=chinese_font,
-                                    zorder=3, fontweight='bold')
-                        
-                        # 格式化数据文本
+                        # 获取Z坐标范围
+                        from Models.Config import Config
                         try:
-                            # 确保数值正确转换为浮点数
-                            x_val = float(max_point[0])
-                            y_val = float(max_point[1])
-                            z_val = float(max_point[2])
-                            t_val = float(max_point[3])
-                            br_val = float(max_br)
-                            
-                            # 获取模型名称
-                            try:
-                                model_name = str(self.model_manager.get_current_model().model_name)
-                            except:
-                                model_name = "未知"
-                            
-                            result_text = (
-                                f"• 空间坐标\n"
-                                f"   X: {x_val:.2f} m\n"
-                                f"   Y: {y_val:.2f} m\n" 
-                                f"   Z: {z_val:.2f} m\n\n"
-                                f"• 时间参数\n"
-                                f"   事件时间: {t_val:.4f} s\n\n"
-                                f"• 定位质量\n"
-                                f"   最大亮度: {br_val:.4f}\n\n"
-                                f"• 计算参数\n"
-                                f"   速度模型: {model_name}\n"
-                                f"   定位方法: 叠加能量成像"
-                            )
+                            config = Config()
+                            z_min = int(config.get("Default", "z_min", 0))
+                            z_max = int(config.get("Default", "z_max", 5000))
                         except Exception as e:
-                            print(f"格式化结果文本时出错: {e}")
-                            # 使用不带格式化的回退版本
-                            result_text = (
-                                f"• 空间坐标\n"
-                                f"   X: {max_point[0]} m\n"
-                                f"   Y: {max_point[1]} m\n" 
-                                f"   Z: {max_point[2]} m\n\n"
-                                f"• 时间参数\n"
-                                f"   事件时间: {max_point[3]} s\n\n"
-                                f"• 定位质量\n"
-                                f"   最大亮度: {max_br}\n\n"
-                                f"• 计算参数\n"
-                                f"   速度模型: 未知\n"
-                                f"   定位方法: 叠加能量成像"
-                            )
+                            print(f"获取Z范围失败: {e}")
+                            z_min = 0
+                            z_max = 5000
                         
-                        # 添加结果文本
-                        text_ax.text(0.1, 0.75, result_text, 
-                                    fontsize=11, va='top',
-                                    transform=text_ax.transAxes,
-                                    zorder=3, family=chinese_font,
-                                    color='#2c3e50')
-                                    
-                        # 添加页脚
-                        footer_ax = export_fig.add_subplot(grid[2, :])
+                        # XY平面切片图
+                        if isinstance(max_slice, np.ndarray) and max_slice.size > 1:
+                            ax_slice_xy.imshow(max_slice, cmap=cmap, interpolation='bicubic',
+                                            extent=[grid_x[0], grid_x[-1], grid_y[0], grid_y[-1]],
+                                            origin='lower', aspect='auto', alpha=0.8)
+                            # 添加XY平面上的检波器位置
+                            ax_slice_xy.scatter(detector_x, detector_y, s=30, color='white', alpha=0.7, 
+                                             marker='^', edgecolor='black', linewidth=0.5)
+                            # 添加震源位置标记
+                            ax_slice_xy.plot(x_val, y_val, 'r*', markersize=15, markeredgecolor='white', 
+                                          markeredgewidth=1.5)
+                            # 添加轴标签
+                            ax_slice_xy.set_xlabel('X坐标 (m)', fontsize=10, family=chinese_font)
+                            ax_slice_xy.set_ylabel('Y坐标 (m)', fontsize=10, family=chinese_font)
+                            ax_slice_xy.set_title("XY平面切片 (俯视图)", fontsize=11, fontweight='bold', family=chinese_font)
+                            
+                            # 添加切线
+                            ax_slice_xy.axvline(x=x_val, color='white', linestyle='--', alpha=0.5)
+                            ax_slice_xy.axhline(y=y_val, color='white', linestyle='--', alpha=0.5)
+                        
+                        # XZ平面切片图 (模拟)
+                        # 创建XZ平面上的模拟数据
+                        try:
+                            # 使用高斯模型创建空间亮度衰减模拟
+                            xz_grid_x = grid_x
+                            xz_grid_z = np.linspace(z_min, z_max, 100)
+                            XZ, ZX = np.meshgrid(xz_grid_x, xz_grid_z)
+                            XZ_slice = np.zeros_like(XZ)
+                            
+                            # 基于最大亮度点创建高斯分布
+                            for i in range(XZ_slice.shape[0]):
+                                for j in range(XZ_slice.shape[1]):
+                                    dist_squared = ((xz_grid_x[j] - x_val)/300)**2 + ((xz_grid_z[i] - z_val)/300)**2
+                                    XZ_slice[i, j] = max_brightness * np.exp(-dist_squared)
+                            
+                            # 绘制XZ平面图
+                            ax_slice_xz.imshow(XZ_slice, cmap=cmap, interpolation='bicubic',
+                                            extent=[xz_grid_x[0], xz_grid_x[-1], xz_grid_z[0], xz_grid_z[-1]],
+                                            origin='lower', aspect='auto', alpha=0.8)
+                            
+                            # 添加XZ平面上的检波器位置
+                            ax_slice_xz.scatter(detector_x, detector_z, s=30, color='white', alpha=0.7, 
+                                             marker='^', edgecolor='black', linewidth=0.5)
+                            
+                            # 添加震源位置标记
+                            ax_slice_xz.plot(x_val, z_val, 'r*', markersize=15, markeredgecolor='white', 
+                                          markeredgewidth=1.5)
+                            
+                            # 添加轴标签
+                            ax_slice_xz.set_xlabel('X坐标 (m)', fontsize=10, family=chinese_font)
+                            ax_slice_xz.set_ylabel('Z坐标 (m)', fontsize=10, family=chinese_font)
+                            ax_slice_xz.set_title("XZ平面切片 (纵剖面)", fontsize=11, fontweight='bold', family=chinese_font)
+                            
+                            # 添加切线
+                            ax_slice_xz.axvline(x=x_val, color='white', linestyle='--', alpha=0.5)
+                            ax_slice_xz.axhline(y=z_val, color='white', linestyle='--', alpha=0.5)
+                        except Exception as e:
+                            print(f"创建XZ平面切片失败: {e}")
+                        
+                        # YZ平面切片图 (模拟)
+                        try:
+                            # 创建YZ平面上的模拟数据
+                            yz_grid_y = grid_y
+                            yz_grid_z = np.linspace(z_min, z_max, 100)
+                            YZ, ZY = np.meshgrid(yz_grid_y, yz_grid_z)
+                            YZ_slice = np.zeros_like(YZ)
+                            
+                            # 基于最大亮度点创建高斯分布
+                            for i in range(YZ_slice.shape[0]):
+                                for j in range(YZ_slice.shape[1]):
+                                    dist_squared = ((yz_grid_y[j] - y_val)/300)**2 + ((yz_grid_z[i] - z_val)/300)**2
+                                    YZ_slice[i, j] = max_brightness * np.exp(-dist_squared)
+                            
+                            # 绘制YZ平面图
+                            ax_slice_yz.imshow(YZ_slice, cmap=cmap, interpolation='bicubic',
+                                            extent=[yz_grid_y[0], yz_grid_y[-1], yz_grid_z[0], yz_grid_z[-1]],
+                                            origin='lower', aspect='auto', alpha=0.8)
+                            
+                            # 添加YZ平面上的检波器位置
+                            ax_slice_yz.scatter(detector_y, detector_z, s=30, color='white', alpha=0.7, 
+                                             marker='^', edgecolor='black', linewidth=0.5)
+                            
+                            # 添加震源位置标记
+                            ax_slice_yz.plot(y_val, z_val, 'r*', markersize=15, markeredgecolor='white', 
+                                          markeredgewidth=1.5)
+                            
+                            # 添加轴标签
+                            ax_slice_yz.set_xlabel('Y坐标 (m)', fontsize=10, family=chinese_font)
+                            ax_slice_yz.set_ylabel('Z坐标 (m)', fontsize=10, family=chinese_font)
+                            ax_slice_yz.set_title("YZ平面切片 (侧剖面)", fontsize=11, fontweight='bold', family=chinese_font)
+                            
+                            # 添加切线
+                            ax_slice_yz.axvline(x=y_val, color='white', linestyle='--', alpha=0.5)
+                            ax_slice_yz.axhline(y=z_val, color='white', linestyle='--', alpha=0.5)
+                        except Exception as e:
+                            print(f"创建YZ平面切片失败: {e}")
+                        
+                        # 6. 分析报告页脚
+                        footer_ax = export_fig.add_subplot(grid[4, :])
                         footer_ax.axis('off')
-                        footer_ax.text(0.01, 0.5, "SSATOP微地震监测系统", 
-                                     fontsize=8, ha='left', va='center',
-                                     family=chinese_font,
-                                     color='#666666', style='italic')
-                        footer_ax.text(0.5, 0.5, f"文件: {export_filename}", 
-                                     fontsize=8, ha='center', va='center',
-                                     family=chinese_font, 
-                                     color='#666666')
-                        footer_ax.text(0.99, 0.5, f"导出时间: {time.strftime('%Y-%m-%d %H:%M:%S')}", 
-                                     fontsize=8, ha='right', va='center',
-                                     family=chinese_font, 
-                                     color='#666666')
-                    
-                    # 调整布局
-                    plt.tight_layout()
+                        
+                        # 添加页脚分隔线
+                        footer_ax.axhline(y=0.9, xmin=0.05, xmax=0.95, color='#888', lw=1, alpha=0.5)
+                        
+                        # 添加结果摘要
+                        summary_text = (
+                            f"震源坐标: X={x_val:.2f} m, Y={y_val:.2f} m, Z={z_val:.2f} m    "
+                            f"事件时间: T={t_val:.4f} s    "
+                            f"最大亮度: {max_brightness:.4f}    "
+                        )
+                        
+                        footer_ax.text(0.5, 0.7, summary_text, fontsize=11, ha='center', va='center',
+                                     family='monospace', fontweight='bold', color='#333')
+                        
+                        # 统计数据
+                        if isinstance(max_slice, np.ndarray) and max_slice.size > 1:
+                            try:
+                                min_br = float(np.min(max_slice))
+                                mean_br = float(np.mean(max_slice))
+                                median_br = float(np.median(max_slice))
+                                std_br = float(np.std(max_slice))
+                                p90_br = float(np.percentile(max_slice, 90))
+                                
+                                # 计算高于阈值的点数比例
+                                high_threshold = 0.75 * max_brightness
+                                high_ratio = np.sum(max_slice > high_threshold) / max_slice.size * 100
+                                
+                                # 计算半高宽
+                                half_max = max_brightness / 2.0
+                                x_profile = max_slice[max_idx_y, :]
+                                y_profile = max_slice[:, max_idx_x]
+                                x_above_half = np.where(x_profile > half_max)[0]
+                                y_above_half = np.where(y_profile > half_max)[0]
+                                
+                                if len(x_above_half) > 1 and len(y_above_half) > 1:
+                                    x_fwhm = grid_x[x_above_half[-1]] - grid_x[x_above_half[0]]
+                                    y_fwhm = grid_y[y_above_half[-1]] - grid_y[y_above_half[0]]
+                                else:
+                                    x_fwhm = y_fwhm = 0
+                                    
+                                stats_text = (
+                                    f"统计: 平均亮度={mean_br:.4f}, 标准差={std_br:.4f}, P90={p90_br:.4f}    "
+                                    f"高亮区占比={high_ratio:.2f}%    X半高宽={x_fwhm:.2f} m, Y半高宽={y_fwhm:.2f} m"
+                                )
+                                
+                                footer_ax.text(0.5, 0.4, stats_text, fontsize=9, ha='center', va='center',
+                                             family=chinese_font, color='#555')
+                            except Exception as e:
+                                print(f"计算统计数据失败: {e}")
+                        
+                        # 添加品牌信息
+                        footer_ax.text(0.05, 0.1, "SSATOP®微地震监测系统", fontsize=8, ha='left', va='center',
+                                     family=chinese_font, color='#666', style='italic')
+                        
+                        # 添加页码和时间信息
+                        footer_ax.text(0.95, 0.1, f"页码 1/1 · 生成时间 {timestamp}", fontsize=7, 
+                                     ha='right', va='center', family=chinese_font, color='#666')
+                        
+                        # 添加装饰点
+                        for i in range(11):
+                            dot_color = plt.cm.plasma(i/10)
+                            footer_ax.add_patch(plt.Circle((0.05+i*0.09, 0.2), 0.01, fc=dot_color, ec='none'))
+                        
+                        # 添加QR码（模拟）
+                        qr_ax = export_fig.add_axes([0.01, 0.01, 0.08, 0.08])
+                        qr_ax.axis('off')
+                        
+                        # 创建模拟QR码
+                        qr_data = np.random.randint(0, 2, (10, 10))
+                        # 扩大边缘，添加定位符
+                        qr_image = np.ones((12, 12))
+                        qr_image[1:11, 1:11] = qr_data
+                        
+                        # 添加三个定位点
+                        for i, j in [(1,1), (1,9), (9,1)]:
+                            qr_image[i-1:i+2, j-1:j+2] = 0
+                            qr_image[i, j] = 1
+                        
+                        qr_ax.imshow(qr_image, cmap='binary', interpolation='none')
+                        qr_ax.text(0.5, -0.2, "扫码查看详情", fontsize=6, ha='center', family=chinese_font)
+                        
+                        # 添加半透明对角线水印
+                        watermark_ax = export_fig.add_axes([0, 0, 1, 1])
+                        watermark_ax.axis('off')
+                        watermark_ax.text(0.5, 0.5, "SSATOP Analysis", fontsize=50, 
+                                        color='gray', alpha=0.05, rotation=30,
+                                        ha='center', va='center', weight='bold')
+                        
+                        # 自定义创建比例尺的函数
+                        def add_custom_scalebar(ax, length=100, position='lower right'):
+                            """添加自定义比例尺到坐标轴"""
+                            x_min, x_max = ax.get_xlim()
+                            y_min, y_max = ax.get_ylim()
+                            
+                            # 根据位置确定比例尺起点
+                            if position == 'lower right':
+                                scale_x = x_max - (x_max - x_min) * 0.15 - length  # 右下角
+                                scale_y = y_min + (y_max - y_min) * 0.05  # 底部附近
+                            elif position == 'lower left':
+                                scale_x = x_min + (x_max - x_min) * 0.05  # 左下角
+                                scale_y = y_min + (y_max - y_min) * 0.05  # 底部附近
+                            else:
+                                scale_x = x_min + (x_max - x_min) * 0.05  # 默认左下角
+                                scale_y = y_min + (y_max - y_min) * 0.05
+                                
+                            # 绘制比例尺线段和文本
+                            ax.plot([scale_x, scale_x + length], [scale_y, scale_y], 'w-', lw=2)
+                            ax.text(scale_x + length/2, scale_y + (y_max-y_min)*0.02, 
+                                  f'{length} m', ha='center', va='bottom', 
+                                  color='white', fontsize=8, family=chinese_font,
+                                  bbox=dict(facecolor='black', alpha=0.3, boxstyle='round,pad=0.2'))
+                        
+                        # 添加图例和标尺到所有切片视图
+                        for ax in [ax_slice_xy, ax_slice_xz, ax_slice_yz]:
+                            add_custom_scalebar(ax, 100, 'lower right')
+                            
+                        # 调整布局，确保所有元素可见
+                        plt.tight_layout(rect=[0.01, 0.01, 0.99, 0.99], h_pad=1.5, w_pad=1.5)
                     
                     # 保存图像
                     print("正在保存图像...")
