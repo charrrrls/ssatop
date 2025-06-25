@@ -4,7 +4,7 @@ import time
 import matplotlib
 from functools import lru_cache
 from Models.Config import Config
-from Models.ModelManager import ModelManager  # 添加模型管理器导入
+from Models.speed_model.model_manager import ModelManager  # 添加模型管理器导入
 import platform
 import traceback
 

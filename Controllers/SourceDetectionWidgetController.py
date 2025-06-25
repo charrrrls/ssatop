@@ -4,7 +4,7 @@ from PyQt6.QtCore import QMetaObject, Qt, Q_ARG, QObject, QTimer
 from Models.TraceFile import TraceFile
 from Models.TaskRunner import TaskRunner
 from Views.SourceDetectionWidget import SourceDetectionWidget
-from Models.ModelManager import ModelManager
+from Models.speed_model.model_manager import ModelManager
 import time
 import traceback
 import matplotlib.pyplot as plt

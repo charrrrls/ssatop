@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import QMessageBox, QTableWidgetItem, QApplication
 from PyQt6.QtCore import Qt
-from Models.ModelManager import ModelManager
+from Models.speed_model.model_manager import ModelManager
 from Views.ModelSettingWidget import ModelSettingWidget
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure

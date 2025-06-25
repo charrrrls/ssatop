@@ -1,7 +1,7 @@
 # controllers.py
 from PyQt6.QtWidgets import QFileDialog, QMessageBox
 from Models.TraceFile import TraceFile
-from Models.ModelManager import ModelManager
+from Models.speed_model.model_manager import ModelManager
 from Views.FileUploadWidget import FileUploadWidget
 import matplotlib.pyplot as plt
 import traceback
