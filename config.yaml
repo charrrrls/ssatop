@@ -1,0 +1,24 @@
+Advanced:
+  auto_load: 'False'
+  theme: dark
+  use_gpu: 'False'
+Default:
+  default_sgy_path: 1.sgy
+  default_xlsx_path: 检波器位置文件.xlsx
+  height: '100'
+  length: '1000'
+  speed: '5500'
+  time_slice: '0.2'
+  velocity_model: prem
+  z_max: '3700'
+  z_min: '3200'
+Theme:
+  current_theme: dark_green
+  custom_theme: '{"app_background": "#000000", "content_background": "#121212", "sidebar_background":
+    "#000000", "sidebar_active": "#1E88E5", "sidebar_hover": "#0D47A1", "sidebar_text":
+    "#FFFFFF", "primary_button": "#1E88E5", "primary_button_hover": "#0D47A1", "secondary_button":
+    "#757575", "secondary_button_hover": "#424242", "accent_button": "#FF9800", "accent_button_hover":
+    "#E65100", "success_button": "#4CAF50", "success_button_hover": "#2E7D32", "text_primary":
+    "#020202", "text_secondary": "#CCCCCC", "border": "#FFFFFF", "chart_background":
+    "#000000", "chart_grid": "#424242", "chart_line": "#2196F3", "chart_accent": "#FF9800",
+    "chart_highlight": "#F44336"}'
