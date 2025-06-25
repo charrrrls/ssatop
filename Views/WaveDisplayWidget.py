@@ -23,6 +23,20 @@ import traceback
 # 配置日志
 logger = logging.getLogger('WaveDisplayWidget')
 
+# 自定义NavigationToolbar，修复在PyQt6中的保存功能
+class CustomNavigationToolbar(NavigationToolbar):
+    """
+    自定义导航工具栏，修复在PyQt6中的保存图像功能
+    """
+    def save_figure(self, *args):
+        """
+        重写原始的save_figure方法，修复QFileDialog.Options问题
+        此方法已禁用，保存功能由控制器统一处理
+        """
+        # 为避免重复保存对话框，禁用工具栏的保存功能
+        # 所有保存操作应通过控制器的handle_save_image方法处理
+        pass
+
 
 class WaveDisplayWidget(QWidget):
     def __init__(self):
@@ -52,8 +66,8 @@ class WaveDisplayWidget(QWidget):
         self.canvas = FigureCanvas(self.fig)
         self.canvas.setMinimumHeight(300)
         
-        # 添加matplotlib导航工具栏
-        self.toolbar = NavigationToolbar(self.canvas, self)
+        # 添加自定义matplotlib导航工具栏
+        self.toolbar = CustomNavigationToolbar(self.canvas, self)
         
         # 波形控制组件
         self.zoom_slider = QSlider(Qt.Orientation.Horizontal)
@@ -70,7 +84,9 @@ class WaveDisplayWidget(QWidget):
         self.display_type_group.addButton(self.normalized_radio, 1)
         self.display_type_group.addButton(self.fft_radio, 2)
         self.display_type_group.addButton(self.spectrogram_radio, 3)
-        self.normalized_radio.setChecked(True)  # 默认选择归一化波形
+        
+        # 修改默认选择为原始波形，而不是归一化波形
+        self.raw_radio.setChecked(True)  
         
         # 分析参数控制
         self.window_size_spin = QSpinBox()
@@ -114,12 +130,12 @@ class WaveDisplayWidget(QWidget):
         # 频谱分析画布
         self.spectrum_fig = Figure(figsize=(8, 5), dpi=100)
         self.spectrum_canvas = FigureCanvas(self.spectrum_fig)
-        self.spectrum_toolbar = NavigationToolbar(self.spectrum_canvas, self)
+        self.spectrum_toolbar = CustomNavigationToolbar(self.spectrum_canvas, self)
         
         # 高级分析画布
         self.tf_fig = Figure(figsize=(8, 5), dpi=100)
         self.tf_canvas = FigureCanvas(self.tf_fig)
-        self.tf_toolbar = NavigationToolbar(self.tf_canvas, self)
+        self.tf_toolbar = CustomNavigationToolbar(self.tf_canvas, self)
         
         # 初始化窗口函数和频谱类型下拉框
         self.window_combo = QComboBox()
@@ -308,7 +324,8 @@ class WaveDisplayWidget(QWidget):
         self.grid_checkbox.stateChanged.connect(self.update_display_options)
         self.legend_checkbox.stateChanged.connect(self.update_display_options)
         self.display_type_group.buttonClicked.connect(self.update_display_type)
-        self.save_button.clicked.connect(self.save_figure)
+        # 注释掉保存按钮连接，让保存功能只由控制器处理
+        # self.save_button.clicked.connect(self.save_figure)
         self.reset_button.clicked.connect(self.reset_view)
         self.analyze_button.clicked.connect(self.analyze_waveform)
         
@@ -526,21 +543,120 @@ class WaveDisplayWidget(QWidget):
         self.current_data = wave_data
         self.normalized_data = normalize_data(wave_data)
         self.time_axis = np.arange(sample_count) * sample_interval
+        self.current_trace_number = trace_number  # 保存当前道号
         
         # 计算频谱
         self.compute_fft()
         
-        # 显示波数据详情
+        # 计算波形的统计特性
+        data_max = np.max(wave_data)
+        data_min = np.min(wave_data)
+        data_mean = np.mean(wave_data)
+        data_std = np.std(wave_data)
+        data_rms = np.sqrt(np.mean(np.square(wave_data)))
+        
+        # 计算主频率 - 使用功率谱的峰值频率
+        if self.freq_axis is not None and self.fft_data is not None:
+            peak_freq_idx = np.argmax(self.fft_data[5:]) + 5  # 跳过最低频
+            dominant_freq = self.freq_axis[peak_freq_idx]
+        else:
+            dominant_freq = 0
+            
+        # 估算信噪比 - 使用峰值与标准差的比值
+        snr = 0
+        if data_std > 0:
+            snr = 20 * np.log10(data_max / data_std)
+            
+        # 清除现有图表
+        self.fig.clear()
+        ax = self.fig.add_subplot(111)
+        
+        # 显示波数据详情 - 使用标准表格布局
         self.display_label.setText(
-            f"<b>波数据详情</b><br>"
-            f"------------------------------------------------------------<br>"
-            f"<b>波数据编号</b>: {trace_number}<br>"
-            f"<b>数据点个数</b>: {len(wave_data)} <br>"
-            f"<b>采样间隔</b>: {sample_interval:.6f} s<br>"
-            f"<b>采样频率</b>: {1/sample_interval:.2f} Hz<br>"
-            f"<b>波形总时长</b>: {sample_count * sample_interval:.3f} s<br>"
-            f"<b>微地震预测发生区间</b>：{time_data['start']:.3f}s ~ {time_data['end']:.3f}s<br>"
-            f"------------------------------------------------------------"
+            f"<div style='padding:10px; border:1px solid #ddd; border-radius:5px; background-color:#f8f9fa;'>"
+            f"<h3 style='text-align:center; color:#0D47A1; margin-top:0;'>波数据详情</h3>"
+            
+            # 使用单一大表格呈现所有信息
+            f"<table style='width:100%; border-collapse:collapse; margin-bottom:10px; border:1px solid #ddd;'>"
+            
+            # 表头
+            f"<thead style='background-color:#0D47A1; color:white;'>"
+            f"<tr>"
+            f"<th style='padding:8px; text-align:left; border:1px solid #ddd; width:25%;'>参数</th>"
+            f"<th style='padding:8px; text-align:left; border:1px solid #ddd; width:25%;'>数值</th>"
+            f"<th style='padding:8px; text-align:left; border:1px solid #ddd; width:25%;'>参数</th>"
+            f"<th style='padding:8px; text-align:left; border:1px solid #ddd; width:25%;'>数值</th>"
+            f"</tr>"
+            f"</thead>"
+            
+            # 表格主体
+            f"<tbody>"
+            
+            # 第一行 - 基本信息
+            f"<tr style='background-color:#e3f2fd;'>"
+            f"<td style='padding:8px; border:1px solid #ddd; font-weight:bold;'>通道编号</td>"
+            f"<td style='padding:8px; border:1px solid #ddd;'>{trace_number}</td>"
+            f"<td style='padding:8px; border:1px solid #ddd; font-weight:bold;'>数据点数</td>"
+            f"<td style='padding:8px; border:1px solid #ddd;'>{len(wave_data):,}</td>"
+            f"</tr>"
+            
+            # 第二行 - 采样信息
+            f"<tr style='background-color:#f5f5f5;'>"
+            f"<td style='padding:8px; border:1px solid #ddd; font-weight:bold;'>采样间隔</td>"
+            f"<td style='padding:8px; border:1px solid #ddd;'>{sample_interval:.6f} s</td>"
+            f"<td style='padding:8px; border:1px solid #ddd; font-weight:bold;'>采样频率</td>"
+            f"<td style='padding:8px; border:1px solid #ddd;'>{1/sample_interval:.2f} Hz</td>"
+            f"</tr>"
+            
+            # 第三行 - 记录信息
+            f"<tr style='background-color:#e3f2fd;'>"
+            f"<td style='padding:8px; border:1px solid #ddd; font-weight:bold;'>记录总时长</td>"
+            f"<td style='padding:8px; border:1px solid #ddd;'>{sample_count * sample_interval:.3f} s</td>"
+            f"<td style='padding:8px; border:1px solid #ddd; font-weight:bold;'>主频率</td>"
+            f"<td style='padding:8px; border:1px solid #ddd;'>{dominant_freq:.2f} Hz</td>"
+            f"</tr>"
+            
+            # 第四行 - 事件信息
+            f"<tr style='background-color:#f5f5f5;'>"
+            f"<td style='padding:8px; border:1px solid #ddd; font-weight:bold;'>事件区间</td>"
+            f"<td style='padding:8px; border:1px solid #ddd;'>{time_data['start']:.3f} ~ {time_data['end']:.3f} s</td>"
+            f"<td style='padding:8px; border:1px solid #ddd; font-weight:bold;'>事件持续</td>"
+            f"<td style='padding:8px; border:1px solid #ddd;'>{time_data['end']-time_data['start']:.3f} s</td>"
+            f"</tr>"
+            
+            # 第五行 - 统计信息1
+            f"<tr style='background-color:#e3f2fd;'>"
+            f"<td style='padding:8px; border:1px solid #ddd; font-weight:bold;'>最大值</td>"
+            f"<td style='padding:8px; border:1px solid #ddd;'>{data_max:.4f}</td>"
+            f"<td style='padding:8px; border:1px solid #ddd; font-weight:bold;'>最小值</td>"
+            f"<td style='padding:8px; border:1px solid #ddd;'>{data_min:.4f}</td>"
+            f"</tr>"
+            
+            # 第六行 - 统计信息2
+            f"<tr style='background-color:#f5f5f5;'>"
+            f"<td style='padding:8px; border:1px solid #ddd; font-weight:bold;'>均值</td>"
+            f"<td style='padding:8px; border:1px solid #ddd;'>{data_mean:.4f}</td>"
+            f"<td style='padding:8px; border:1px solid #ddd; font-weight:bold;'>标准差</td>"
+            f"<td style='padding:8px; border:1px solid #ddd;'>{data_std:.4f}</td>"
+            f"</tr>"
+            
+            # 第七行 - 统计信息3
+            f"<tr style='background-color:#e3f2fd;'>"
+            f"<td style='padding:8px; border:1px solid #ddd; font-weight:bold;'>有效值(RMS)</td>"
+            f"<td style='padding:8px; border:1px solid #ddd;'>{data_rms:.4f}</td>"
+            f"<td style='padding:8px; border:1px solid #ddd; font-weight:bold;'>信噪比(SNR)</td>"
+            f"<td style='padding:8px; border:1px solid #ddd;'>{snr:.2f}</td>"
+            f"</tr>"
+            
+            f"</tbody>"
+            f"</table>"
+            
+            # 操作提示
+            f"<div style='padding:8px; background-color:#fffde7; border-radius:3px; border:1px solid #ffd54f; margin-top:10px;'>"
+            f"<p style='margin:0; font-size:0.9em;'><b>提示</b>: 选择<b>原始波形</b>查看实际振幅 | 选择<b>归一化波形</b>查看标准化信号 | 使用<b>缩放滑块</b>调整视图</p>"
+            f"</div>"
+            
+            f"</div>"
         )
 
         # 更新时间范围控件
@@ -551,9 +667,21 @@ class WaveDisplayWidget(QWidget):
         self.start_time_spin.setRange(0, max_time)
         self.end_time_spin.setRange(0, max_time)
         
-        # 设置默认值
-        self.start_time_spin.setValue(0)
-        self.end_time_spin.setValue(min(5, max_time))  # 默认显示前5秒或全部（如果小于5秒）
+        # 设置默认值为微地震预测发生区间，如果存在
+        if time_data and 'start' in time_data and 'end' in time_data:
+            # 扩展一点时间范围，前后各增加10%的事件持续时间
+            event_duration = time_data['end'] - time_data['start']
+            buffer = max(0.1 * event_duration, 0.1)  # 至少0.1秒缓冲
+            
+            start_time = max(0, time_data['start'] - buffer)
+            end_time = min(max_time, time_data['end'] + buffer)
+            
+            self.start_time_spin.setValue(start_time)
+            self.end_time_spin.setValue(end_time)
+        else:
+            # 如果没有事件信息，则显示前5秒或全部
+            self.start_time_spin.setValue(0)
+            self.end_time_spin.setValue(min(5, max_time))
         
         # 更新步长为总时长的1%，方便微调
         step_size = max(0.01, max_time / 100)
@@ -603,6 +731,9 @@ class WaveDisplayWidget(QWidget):
             ax.set_title('原始波形数据')
             ax.set_xlabel('时间 (s)')
             ax.set_ylabel('振幅')
+            # 重要：使用原始数据的实际振幅范围，不进行归一化
+            ax.relim()  # 重新计算限制
+            ax.autoscale()  # 自动缩放到实际数据范围
             
         elif self.normalized_radio.isChecked():
             # 归一化波形
@@ -610,17 +741,21 @@ class WaveDisplayWidget(QWidget):
             ax.set_title('归一化波形数据')
             ax.set_xlabel('时间 (s)')
             ax.set_ylabel('归一化振幅')
+            # 归一化的情况下，明确设置Y轴范围为[-1.1, 1.1]，略大于标准化后的[-1, 1]范围
+            ax.set_ylim(-1.1, 1.1)
             
         elif self.fft_radio.isChecked():
             # 频谱分析
             if self.freq_axis is not None and self.fft_data is not None:
                 # 排除频谱中前5%的低频分量，避免直流分量和极低频噪声影响显示效果
-                start_idx = max(1, int(len(self.fft_data) * 0.05))
+                start_idx = max(1, int(len(self.fft_data) * 0.01))
                 ax.plot(self.freq_axis[start_idx:], self.fft_data[start_idx:], 'r-', label='频谱')
                 ax.set_title('频谱分析')
                 ax.set_xlabel('频率 (Hz)')
                 ax.set_ylabel('幅度')
                 ax.set_xlim(0, min(500, max(self.freq_axis)))  # 限制显示范围
+                ax.relim()
+                ax.autoscale(axis='y')  # 只对Y轴自动缩放
                 
         elif self.spectrogram_radio.isChecked():
             # 时频图
@@ -651,13 +786,28 @@ class WaveDisplayWidget(QWidget):
         # 实际缩放操作
         if hasattr(self, 'fig') and self.fig.axes:
             ax = self.fig.axes[0]
-
-            # 计算新的y轴范围
-            if self.normalized_data is not None:
-                y_range = np.max(np.abs(self.normalized_data))
-                y_scale = 100 / zoom_percent
-                ax.set_ylim(-y_range * y_scale, y_range * y_scale)
-                self.canvas.draw()
+            
+            # 根据当前显示类型使用不同的缩放策略
+            if self.raw_radio.isChecked():
+                # 原始波形 - 基于原始数据的振幅范围缩放
+                if self.current_data is not None:
+                    # 计算原始数据的振幅范围
+                    y_range = np.max(np.abs(self.current_data))
+                    y_scale = 100 / zoom_percent
+                    # 获取当前视图的中心
+                    y_center = np.mean(self.current_data)  # 或者可以使用0作为中心
+                    # 设置新的视图范围
+                    ax.set_ylim(y_center - y_range * y_scale, y_center + y_range * y_scale)
+            
+            elif self.normalized_radio.isChecked():
+                # 归一化波形 - 基于[-1,1]的范围缩放
+                if self.normalized_data is not None:
+                    y_scale = 100 / zoom_percent
+                    ax.set_ylim(-1 * y_scale, 1 * y_scale)
+                    
+            # 频谱和时频图不需要在这里处理缩放，因为它们有自己的显示范围逻辑
+            
+            self.canvas.draw()
     
     def update_display_options(self):
         """更新显示选项"""
@@ -702,20 +852,49 @@ class WaveDisplayWidget(QWidget):
         if not hasattr(self, 'fig'):
             return
             
+        # 设置默认文件名
+        default_filename = f"波形图_默认.png"
+        if hasattr(self, 'current_trace_number') and self.current_trace_number is not None:
+            default_filename = f"波形图_{self.current_trace_number}.png"
+            
+        # 修复 QFileDialog.Options 问题，在 PyQt6 中不使用 options 参数
         file_path, _ = QFileDialog.getSaveFileName(
-            self, "保存图像", "", "PNG Files (*.png);;JPEG Files (*.jpg);;All Files (*)")
+            self, "保存图像", default_filename, "PNG Files (*.png);;JPEG Files (*.jpg);;All Files (*)")
             
         if file_path:
-            self.fig.savefig(file_path, dpi=300, bbox_inches='tight')
-            QMessageBox.information(self, "保存成功", f"图像已保存至: {file_path}")
+            try:
+                self.fig.savefig(file_path, dpi=300, bbox_inches='tight')
+                QMessageBox.information(self, "保存成功", f"图像已保存至: {file_path}")
+            except Exception as e:
+                error_msg = f"保存图像失败: {str(e)}"
+                logger.error(error_msg)
+                QMessageBox.critical(self, "错误", error_msg)
     
     def reset_view(self):
         """重置视图"""
         if hasattr(self, 'fig') and self.fig.axes:
             ax = self.fig.axes[0]
-            ax.relim()
-            ax.autoscale()
+            
+            # 根据当前显示类型选择不同的重置逻辑
+            if self.raw_radio.isChecked():
+                # 原始波形 - 使用原始数据的实际范围
+                ax.relim()
+                ax.autoscale()
+            elif self.normalized_radio.isChecked():
+                # 归一化波形 - 将范围设置为标准的[-1.1,1.1]
+                ax.set_ylim(-1.1, 1.1)
+            elif self.fft_radio.isChecked():
+                # 频谱分析 - 自动缩放Y轴，X轴保持固定范围
+                ax.relim()
+                ax.autoscale(axis='y')
+                # X轴保持固定范围
+                if self.freq_axis is not None:
+                    ax.set_xlim(0, min(500, max(self.freq_axis)))
+            # 时频图不需要特殊处理，因为它有固定的显示范围
+            
+            # 重置缩放滑块
             self.zoom_slider.setValue(100)
+            
             self.canvas.draw()
     
     def analyze_waveform(self):

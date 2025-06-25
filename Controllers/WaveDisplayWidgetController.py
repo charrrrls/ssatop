@@ -106,7 +106,9 @@ class WaveDisplayWidgetController:
             QMessageBox.warning(self.wave_display_widget, "警告", f"分析波形时出错: {str(e)}")
 
     def handle_save_image(self):
-        """处理保存图像按钮点击事件"""
+        """
+        处理保存图像按钮点击事件
+        """
         logger.info("执行handle_save_image")
         if self.current_wave_data is None:
             logger.warning("当前没有加载波数据")
@@ -114,14 +116,15 @@ class WaveDisplayWidgetController:
             return
             
         try:
-            # 打开文件保存对话框
-            options = QFileDialog.Options()
+            # 设置默认文件名和路径
+            default_filename = f"波形图_{self.current_trace_number}.png"
+            
+            # 打开文件保存对话框，确保默认显示文件名
             file_path, _ = QFileDialog.getSaveFileName(
                 self.wave_display_widget, 
                 "保存图像", 
-                f"波形_{self.current_trace_number}.png", 
-                "PNG图像 (*.png);;JPG图像 (*.jpg);;所有文件 (*)", 
-                options=options
+                default_filename, 
+                "PNG图像 (*.png);;JPG图像 (*.jpg);;所有文件 (*)"
             )
             
             if file_path:
