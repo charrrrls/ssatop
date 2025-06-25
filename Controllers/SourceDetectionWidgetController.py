@@ -1240,7 +1240,7 @@ class SourceDetectionWidgetController:
                                 footer_ax.text(0.5, 0.4, stats_text, fontsize=9, ha='center', va='center',
                                              family=chinese_font, color='#555')
                             except Exception as e:
-                                print(f"计算统计数据失败: {e}")
+                                    print(f"计算统计数据失败: {e}")
                         
                         # 添加品牌信息
                         footer_ax.text(0.05, 0.1, "SSATOP®微地震监测系统", fontsize=8, ha='left', va='center',
