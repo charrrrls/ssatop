@@ -39,4 +39,27 @@ wheels/
 .Spotlight-V100
 .Trashes
 ehthumbs.db
-Thumbs.db 
+Thumbs.db
+
+# 日志和缓存文件
+.cache
+wave_display_debug.log
+
+# 大型二进制文件
+*.sgy
+
+# macOS系统文件
+.AppleDouble
+.LSOverride
+
+# Windows系统文件
+Desktop.ini
+
+# IDE配置
+*.sublime-workspace
+*.sublime-project
+
+# 临时文件
+temp.py
+temp_fix.py
+*.bak 
