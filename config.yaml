@@ -9,7 +9,7 @@ Default:
   length: '1000'
   speed: '5500'
   time_slice: '0.2'
-  velocity_model: prem
+  velocity_model: simple
   z_max: '3700'
   z_min: '3200'
 Theme:

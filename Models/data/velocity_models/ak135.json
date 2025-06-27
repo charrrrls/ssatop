@@ -1,0 +1,108 @@
+{
+    "name": "AK135",
+    "description": "AK135是由Kennett等人于1995年提出的地球参考模型，是对IASP91模型的改进版本，在地震走时计算和地震定位中广泛使用。",
+    "source": "Kennett, B. L. N., Engdahl, E. R., & Buland, R. (1995). Constraints on seismic velocities in the Earth from traveltimes. Geophysical Journal International, 122(1), 108-124.",
+    "parameters": {
+        "earth_radius": {
+            "value": 6371.0,
+            "unit": "km",
+            "description": "地球半径"
+        },
+        "cmb_depth": {
+            "value": 2889.0,
+            "unit": "km",
+            "description": "核幔边界深度"
+        },
+        "icb_depth": {
+            "value": 5153.5,
+            "unit": "km",
+            "description": "内外核边界深度"
+        }
+    },
+    "layers": [
+        {
+            "depth": 0.0,
+            "vp": 5.8,
+            "vs": 3.46,
+            "density": 2.72,
+            "description": "地壳顶部"
+        },
+        {
+            "depth": 20.0,
+            "vp": 6.5,
+            "vs": 3.85,
+            "density": 2.92,
+            "description": "地壳中部"
+        },
+        {
+            "depth": 35.0,
+            "vp": 8.04,
+            "vs": 4.48,
+            "density": 3.32,
+            "description": "地壳底部/上地幔顶部"
+        },
+        {
+            "depth": 100.0,
+            "vp": 8.05,
+            "vs": 4.49,
+            "density": 3.35,
+            "description": "上地幔"
+        },
+        {
+            "depth": 210.0,
+            "vp": 8.3,
+            "vs": 4.52,
+            "density": 3.4,
+            "description": "上地幔"
+        },
+        {
+            "depth": 410.0,
+            "vp": 9.03,
+            "vs": 4.87,
+            "density": 3.56,
+            "description": "410km不连续面"
+        },
+        {
+            "depth": 660.0,
+            "vp": 10.29,
+            "vs": 5.66,
+            "density": 3.99,
+            "description": "660km不连续面"
+        },
+        {
+            "depth": 760.0,
+            "vp": 10.9,
+            "vs": 6.06,
+            "density": 4.21,
+            "description": "下地幔顶部"
+        },
+        {
+            "depth": 2740.0,
+            "vp": 13.6,
+            "vs": 7.28,
+            "density": 5.56,
+            "description": "下地幔底部"
+        },
+        {
+            "depth": 2889.0,
+            "vp": 8.0,
+            "vs": 0.0,
+            "density": 9.9,
+            "description": "核幔边界"
+        },
+        {
+            "depth": 5153.5,
+            "vp": 10.3,
+            "vs": 0.0,
+            "density": 12.2,
+            "description": "内外核边界"
+        },
+        {
+            "depth": 6371.0,
+            "vp": 11.2,
+            "vs": 3.6,
+            "density": 13.0,
+            "description": "地球中心"
+        }
+    ]
+} 

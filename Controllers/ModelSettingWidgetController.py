@@ -2,6 +2,7 @@ from PyQt6.QtWidgets import QMessageBox, QTableWidgetItem, QApplication
 from PyQt6.QtCore import Qt
 from Models.ModelManager import ModelManager
 from Views.ModelSettingWidget import ModelSettingWidget
+from Views.CustomModelDialog import CustomModelDialog
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 from mpl_toolkits.mplot3d import Axes3D
@@ -9,6 +10,9 @@ import numpy as np
 import traceback
 import time
 import math
+import json
+from pathlib import Path
+import os
 
 class ModelSettingWidgetController:
     """速度模型设置控制器，连接模型与视图"""
@@ -30,6 +34,8 @@ class ModelSettingWidgetController:
         self.view.model_select_combobox.currentIndexChanged.connect(self.handle_model_selection_change)
         self.view.apply_button.clicked.connect(self.handle_apply_model)
         self.view.validate_button.clicked.connect(self.handle_validate_model)
+        self.view.custom_model_button.clicked.connect(self.handle_custom_model)
+        self.view.delete_model_button.clicked.connect(self.handle_delete_model)
         
         # 可视化控制事件绑定
         self.view.viz_type_combo.currentIndexChanged.connect(self.handle_viz_type_change)
@@ -93,6 +99,7 @@ class ModelSettingWidgetController:
         except Exception as e:
             print(f"更新模型描述失败: {e}")
             print(traceback.format_exc())
+            self.view.status_text.append(f"错误: 更新模型失败: {str(e)}")
     
     def update_model_parameters(self, model_name):
         """更新模型参数表格"""
@@ -100,66 +107,77 @@ class ModelSettingWidgetController:
             # 清空表格
             self.view.params_table.setRowCount(0)
             
-            # 模型参数定义
-            parameters = {
-                "simple": [
-                    ("P波速度", "3000", "m/s"),
-                    ("S波速度", "1732", "m/s"),
-                    ("地球密度", "2700", "kg/m³")
-                ],
-                "iasp91": [
-                    ("地壳P波速度", "5800-6500", "m/s"),
-                    ("地壳S波速度", "3360-3750", "m/s"),
-                    ("上地幔P波速度", "8000-8900", "m/s"),
-                    ("上地幔S波速度", "4500-4900", "m/s"),
-                    ("莫霍面深度", "35", "km")
-                ],
-                "ak135": [
-                    ("地壳P波速度", "5800-6500", "m/s"),
-                    ("地壳S波速度", "3460-3850", "m/s"),
-                    ("上地幔P波速度", "8040-8900", "m/s"),
-                    ("上地幔S波速度", "4500-4900", "m/s"),
-                    ("莫霍面深度", "35", "km")
-                ],
-                "prem": [
-                    ("地壳P波速度", "5800-6800", "m/s"),
-                    ("地壳S波速度", "3200-3900", "m/s"),
-                    ("上地幔P波速度", "8000-11300", "m/s"),
-                    ("上地幔S波速度", "4500-6200", "m/s"),
-                    ("莫霍面深度", "24", "km")
-                ],
-                "jb": [
-                    ("地壳P波速度", "5800-6500", "m/s"),
-                    ("地壳S波速度", "3400-3800", "m/s"),
-                    ("上地幔P波速度", "7900-8200", "m/s"),
-                    ("上地幔S波速度", "4300-4700", "m/s"),
-                    ("莫霍面深度", "33", "km")
-                ],
-                "sp6": [
-                    ("地壳P波速度", "5800-6700", "m/s"),
-                    ("地壳S波速度", "3300-3900", "m/s"),
-                    ("上地幔P波速度", "8000-8700", "m/s"),
-                    ("上地幔S波速度", "4500-4900", "m/s"),
-                    ("莫霍面深度", "35", "km")
-                ]
-            }
+            # 从模型管理器获取实际参数
+            model_data = self.model_manager.get_model_data(model_name)
+            if not model_data:
+                raise ValueError(f"无法获取模型 {model_name} 的数据")
+                
+            # 添加基本参数
+            if "parameters" in model_data:
+                for param_name, param_info in model_data["parameters"].items():
+                    value = param_info.get("value", "-")
+                    unit = param_info.get("unit", "-")
+                    
+                    row = self.view.params_table.rowCount()
+                    self.view.params_table.insertRow(row)
+                    
+                    self.view.params_table.setItem(row, 0, QTableWidgetItem(param_name))
+                    self.view.params_table.setItem(row, 1, QTableWidgetItem(str(value)))
+                    self.view.params_table.setItem(row, 2, QTableWidgetItem(unit))
             
-            # 获取当前模型的参数
-            model_params = parameters.get(model_name, [("无参数数据", "-", "-")])
-            
-            # 填充表格
-            for i, (param, value, unit) in enumerate(model_params):
+            # 添加层数据
+            if "layers" in model_data:
+                # 添加分隔行
                 row = self.view.params_table.rowCount()
                 self.view.params_table.insertRow(row)
+                separator = QTableWidgetItem("--- 模型层数据 ---")
+                separator.setFlags(Qt.ItemFlag.ItemIsEnabled)  # 设为只读
+                self.view.params_table.setItem(row, 0, separator)
+                self.view.params_table.setSpan(row, 0, 1, 3)  # 合并单元格
                 
-                # 添加参数名、值和单位
-                self.view.params_table.setItem(row, 0, QTableWidgetItem(param))
-                self.view.params_table.setItem(row, 1, QTableWidgetItem(value))
-                self.view.params_table.setItem(row, 2, QTableWidgetItem(unit))
+                # 添加每一层的数据
+                for i, layer in enumerate(model_data["layers"]):
+                    # 深度
+                    row = self.view.params_table.rowCount()
+                    self.view.params_table.insertRow(row)
+                    self.view.params_table.setItem(row, 0, QTableWidgetItem(f"第{i+1}层深度"))
+                    self.view.params_table.setItem(row, 1, QTableWidgetItem(str(layer.get("depth", "-"))))
+                    self.view.params_table.setItem(row, 2, QTableWidgetItem("km"))
+                    
+                    # P波速度
+                    row = self.view.params_table.rowCount()
+                    self.view.params_table.insertRow(row)
+                    self.view.params_table.setItem(row, 0, QTableWidgetItem(f"第{i+1}层P波速度"))
+                    self.view.params_table.setItem(row, 1, QTableWidgetItem(str(layer.get("vp", "-"))))
+                    self.view.params_table.setItem(row, 2, QTableWidgetItem("km/s"))
+                    
+                    # S波速度
+                    row = self.view.params_table.rowCount()
+                    self.view.params_table.insertRow(row)
+                    self.view.params_table.setItem(row, 0, QTableWidgetItem(f"第{i+1}层S波速度"))
+                    self.view.params_table.setItem(row, 1, QTableWidgetItem(str(layer.get("vs", "-"))))
+                    self.view.params_table.setItem(row, 2, QTableWidgetItem("km/s"))
+            else:
+                # 如果没有层数据，添加提示
+                row = self.view.params_table.rowCount()
+                self.view.params_table.insertRow(row)
+                self.view.params_table.setItem(row, 0, QTableWidgetItem("错误"))
+                self.view.params_table.setItem(row, 1, QTableWidgetItem("模型没有层数据"))
+                self.view.params_table.setItem(row, 2, QTableWidgetItem("-"))
+                
+                self.view.status_text.append(f"警告: 模型 {model_name} 没有层数据，无法正确显示参数")
                 
         except Exception as e:
             print(f"更新模型参数失败: {e}")
             print(traceback.format_exc())
+            self.view.status_text.append(f"错误: 更新模型参数失败: {str(e)}")
+            
+            # 添加错误信息到表格
+            row = self.view.params_table.rowCount()
+            self.view.params_table.insertRow(row)
+            self.view.params_table.setItem(row, 0, QTableWidgetItem("错误"))
+            self.view.params_table.setItem(row, 1, QTableWidgetItem(f"无法加载参数: {str(e)}"))
+            self.view.params_table.setItem(row, 2, QTableWidgetItem("-"))
     
     def update_model_visualization(self, model_name):
         """更新模型可视化"""
@@ -182,6 +200,17 @@ class ModelSettingWidgetController:
         except Exception as e:
             print(f"更新模型可视化失败: {e}")
             print(traceback.format_exc())
+            self.view.status_text.append(f"错误: 更新模型可视化失败: {str(e)}")
+            
+            # 清空图表并显示错误信息
+            fig = self.view.fig
+            fig.clear()
+            ax = fig.add_subplot(111)
+            ax.text(0.5, 0.5, f"错误: {str(e)}", 
+                    ha='center', va='center', transform=ax.transAxes,
+                    fontsize=12, color='red')
+            ax.set_axis_off()
+            self.view.canvas.draw()
     
     def handle_viz_type_change(self):
         """处理可视化类型变更"""
@@ -192,6 +221,7 @@ class ModelSettingWidgetController:
         except Exception as e:
             print(f"处理可视化类型变更失败: {e}")
             print(traceback.format_exc())
+            self.view.status_text.append(f"错误: 处理可视化类型变更失败: {str(e)}")
     
     def handle_viz_params_change(self):
         """处理可视化参数变更"""
@@ -209,6 +239,7 @@ class ModelSettingWidgetController:
         except Exception as e:
             print(f"更新可视化参数失败: {e}")
             print(traceback.format_exc())
+            self.view.status_text.append(f"错误: 更新可视化参数失败: {str(e)}")
     
     def draw_velocity_profile(self, model_name):
         """绘制速度-深度剖面图"""
@@ -223,34 +254,41 @@ class ModelSettingWidgetController:
             # 获取最大深度
             max_depth = self.view.depth_slider.value()
             
-            # 深度范围
-            depths = np.linspace(0, max_depth, 1000)  # 0-max_depth km
+            # 获取模型数据
+            model_data = self.model_manager.get_model_data(model_name)
+            if not model_data or "layers" not in model_data:
+                raise ValueError(f"模型 {model_name} 没有层数据，无法绘制速度-深度剖面图")
             
-            # 不同模型的速度函数 (模拟数据)
-            velocity_profiles = {
-                "simple": lambda d: np.ones_like(d) * 6.0,  # 恒定速度
-                "iasp91": lambda d: 5.8 + 0.7 * np.log10(d + 1) + 0.02 * d * np.sin(d / 5),  # 变化的速度曲线
-                "ak135": lambda d: 5.8 + 0.75 * np.log10(d + 1) + 0.023 * d * np.sin(d / 4.8),
-                "prem": lambda d: 5.8 + 0.8 * np.log10(d + 1) + 0.025 * d * np.sin(d / 4.5),
-                "jb": lambda d: 5.8 + 0.73 * np.log10(d + 1) + 0.021 * d * np.sin(d / 5.2),
-                "sp6": lambda d: 5.8 + 0.76 * np.log10(d + 1) + 0.024 * d * np.sin(d / 4.9),
-                "1066a": lambda d: 5.8 + 0.72 * np.log10(d + 1) + 0.022 * d * np.sin(d / 5.1),
-                "ak135f": lambda d: 5.8 + 0.75 * np.log10(d + 1) + 0.023 * d * np.sin(d / 4.8),
-                "herrin": lambda d: 5.8 + 0.74 * np.log10(d + 1) + 0.022 * d * np.sin(d / 5.0)
-            }
+            # 提取深度和速度数据
+            depths = []
+            vp_values = []
+            vs_values = []
             
-            # 获取当前模型的速度函数
-            velocity_func = velocity_profiles.get(model_name, velocity_profiles["simple"])
+            for layer in model_data["layers"]:
+                depth = layer.get("depth")
+                vp = layer.get("vp")
+                vs = layer.get("vs")
+                
+                if depth is None or vp is None or vs is None:
+                    raise ValueError(f"模型 {model_name} 的层数据不完整，缺少深度或速度值")
+                
+                depths.append(depth)
+                vp_values.append(vp)
+                vs_values.append(vs)
             
-            # 计算P波速度
-            p_velocities = velocity_func(depths)
-            
-            # 计算S波速度 (假设S波速度为P波速度的约0.6倍)
-            s_velocities = p_velocities * 0.6
+            # 检查是否有有效数据
+            if not depths or not vp_values or not vs_values:
+                raise ValueError(f"模型 {model_name} 没有有效的层数据")
+                
+            # 确保数据按深度排序
+            sorted_data = sorted(zip(depths, vp_values, vs_values), key=lambda x: x[0])
+            depths = [d for d, _, _ in sorted_data]
+            vp_values = [vp for _, vp, _ in sorted_data]
+            vs_values = [vs for _, _, vs in sorted_data]
             
             # 绘制速度曲线
-            ax.plot(p_velocities, depths, 'r-', linewidth=2, label='P波速度')
-            ax.plot(s_velocities, depths, 'b-', linewidth=2, label='S波速度')
+            ax.plot(vp_values, depths, 'r-', linewidth=2, label='P波速度')
+            ax.plot(vs_values, depths, 'b-', linewidth=2, label='S波速度')
             
             # 设置坐标轴
             ax.set_xlabel('速度 (km/s)', fontsize=12)
@@ -261,23 +299,16 @@ class ModelSettingWidgetController:
             # 图表标题
             ax.set_title(f"{model_name}模型速度-深度剖面", fontsize=14, fontweight='bold')
             
-            # 添加模型特征标注
-            if model_name != "simple":
-                # 模拟莫霍面位置
-                moho_depths = {
-                    "iasp91": 35, "ak135": 35, "prem": 24, "jb": 33, 
-                    "sp6": 35, "1066a": 30, "ak135f": 35, "herrin": 33
-                }
-                moho_depth = moho_depths.get(model_name, 35)
-                
-                # 绘制莫霍面位置
-                if moho_depth <= max_depth:
+            # 查找莫霍面深度（如果有定义）
+            if "parameters" in model_data and "moho_depth" in model_data["parameters"]:
+                moho_depth = model_data["parameters"]["moho_depth"].get("value")
+                if moho_depth is not None and moho_depth <= max_depth:
                     ax.axhline(y=moho_depth, color='blue', linestyle='--', alpha=0.8)
-                    ax.text(8.0, moho_depth - 2, '莫霍面', fontsize=10, color='blue')
-                    
-                    # 标注地壳和上地幔
-                    ax.text(8.0, moho_depth * 0.3, '地壳', fontsize=12, color='darkgreen')
-                    ax.text(8.0, moho_depth + (max_depth - moho_depth) * 0.3, '上地幔', fontsize=12, color='darkred')
+                    # 检查vp_values是否为空，避免max()操作空列表
+                    if vp_values:
+                        ax.text(max(vp_values) * 0.8, moho_depth - 2, '莫霍面', fontsize=10, color='blue')
+                    else:
+                        ax.text(5.0, moho_depth - 2, '莫霍面', fontsize=10, color='blue')  # 使用默认值5.0
             
             # 添加图例
             ax.legend(loc='upper right')
@@ -289,6 +320,16 @@ class ModelSettingWidgetController:
         except Exception as e:
             print(f"绘制速度剖面图失败: {e}")
             print(traceback.format_exc())
+            self.view.status_text.append(f"错误: 绘制速度剖面图失败: {str(e)}")
+            
+            # 显示错误信息
+            fig.clear()
+            ax = fig.add_subplot(111)
+            ax.text(0.5, 0.5, f"绘制速度剖面图失败: {str(e)}", 
+                    ha='center', va='center', transform=ax.transAxes,
+                    fontsize=12, color='red')
+            ax.set_axis_off()
+            self.view.canvas.draw()
     
     def draw_ray_path(self, model_name):
         """绘制射线路径图"""
@@ -302,83 +343,74 @@ class ModelSettingWidgetController:
             
             # 获取震中距离和深度
             distance_deg = self.view.distance_slider.value()
-            source_depth = 10  # 固定震源深度为10km
             selected_phase = self.view.phase_combo.currentText()
             
-            # 地球半径(km)
-            earth_radius = 6371.0
+            # 获取模型数据
+            model_data = self.model_manager.get_model_data(model_name)
+            if not model_data:
+                raise ValueError(f"无法获取模型 {model_name} 的数据")
             
-            # 模拟射线路径数据
-            theta = np.radians(np.linspace(0, distance_deg, 100))
-            
-            # 不同波相的路径函数 (模拟数据)
-            def get_ray_path_depth(theta_rad, phase, model):
-                # 根据波相和模型生成不同深度的射线路径
-                max_depth_factor = {
-                    "P": 0.1, "S": 0.12, 
-                    "PcP": 0.5, "ScS": 0.5,
-                    "PKP": 0.8, "SKS": 0.8,
-                    "Pdiff": 0.5, "Sdiff": 0.5
-                }
+            # 调用视图类的射线路径计算方法
+            try:
+                x_values, y_values = self.view._calculate_real_ray_path(model_data, distance_deg, selected_phase)
                 
-                # 模型影响因子
-                model_factor = {
-                    "simple": 1.0, "iasp91": 1.05, "ak135": 1.1,
-                    "prem": 1.15, "jb": 1.05, "sp6": 1.1, 
-                    "1066a": 1.05, "ak135f": 1.1, "herrin": 1.05
-                }
+                if len(x_values) == 0 or len(y_values) == 0:
+                    raise ValueError("射线路径计算结果为空")
+                    
+                # 绘制射线路径
+                ax.plot(x_values, y_values, 'r-', linewidth=2, label=f'{selected_phase}波射线路径')
                 
-                # 获取波相和模型的对应因子
-                depth_factor = max_depth_factor.get(phase, 0.1) * model_factor.get(model, 1.0)
+                # 绘制地球表面
+                ax.plot([0, distance_deg], [0, 0], 'k-', linewidth=1.5)
                 
-                # 生成路径
-                if phase in ["P", "S"]:
-                    # 直达波: 简单弧线
-                    return earth_radius * depth_factor * np.sin(theta_rad)
-                elif phase in ["PcP", "ScS"]:
-                    # 核反射波: 更深的弧线
-                    return earth_radius * depth_factor * np.sin(2 * theta_rad)
-                elif phase in ["PKP", "SKS"]:
-                    # 核穿透波: 深入地核
-                    return earth_radius * depth_factor * (1 - np.cos(theta_rad * 2))
-                else:
-                    # 默认路径
-                    return earth_radius * 0.1 * np.sin(theta_rad)
-            
-            # 计算射线路径
-            depths = get_ray_path_depth(theta, selected_phase, model_name)
-            
-            # 绘制地球表面
-            earth_surface = np.zeros_like(theta)
-            ax.plot(np.degrees(theta), earth_surface, 'k-', linewidth=1.5)
-            
-            # 绘制射线路径
-            ax.plot(np.degrees(theta), depths, 'r-', linewidth=2, label=selected_phase)
-            
-            # 添加震源和接收器标记
-            ax.scatter([0], [source_depth], color='blue', s=100, marker='*', label='震源')
-            ax.scatter([distance_deg], [0], color='green', s=100, marker='^', label='接收器')
-            
-            # 设置坐标轴
-            ax.set_xlabel('震中距 (度)', fontsize=12)
-            ax.set_ylabel('深度 (km)', fontsize=12)
-            ax.set_xlim(0, distance_deg)
-            ax.set_ylim(max(np.max(depths), source_depth) * 1.1, -10)  # 深度从0开始向下增加
-            ax.grid(True, linestyle='--', alpha=0.7)
-            
-            # 图表标题
-            ax.set_title(f"{model_name}模型 {selected_phase}波射线路径", fontsize=14, fontweight='bold')
-            
-            # 添加图例
-            ax.legend(loc='upper right')
-            
-            # 更新图表布局
-            fig.tight_layout()
-            self.view.canvas.draw()
+                # 添加震源和接收器标记
+                ax.scatter([0], [10], color='blue', s=100, marker='*', label='震源')
+                ax.scatter([distance_deg], [0], color='green', s=100, marker='^', label='接收器')
+                
+                # 设置坐标轴
+                ax.set_xlabel('震中距 (度)', fontsize=12)
+                ax.set_ylabel('深度 (km)', fontsize=12)
+                ax.set_xlim(0, distance_deg)
+                
+                # 获取合适的深度范围
+                max_y = max(y_values) * 1.1
+                ax.set_ylim(max_y, -10)  # 深度从0开始向下增加
+                
+                # 绘制参考深度线
+                # 核幔边界
+                cmb_depth = 2889.0
+                if cmb_depth < max_y:
+                    ax.axhline(y=cmb_depth, color='orange', linestyle='-', alpha=0.5, label='核幔边界')
+                
+                # 图表标题
+                ax.set_title(f"{model_name}模型 {selected_phase}波射线路径", fontsize=14, fontweight='bold')
+                
+                # 添加网格
+                ax.grid(True, linestyle='--', alpha=0.7)
+                
+                # 添加图例
+                ax.legend(loc='upper right')
+                
+                # 更新图表布局
+                fig.tight_layout()
+                self.view.canvas.draw()
+                
+            except Exception as e:
+                raise ValueError(f"计算射线路径失败: {str(e)}")
             
         except Exception as e:
             print(f"绘制射线路径图失败: {e}")
             print(traceback.format_exc())
+            self.view.status_text.append(f"错误: 绘制射线路径图失败: {str(e)}")
+            
+            # 显示错误信息
+            fig.clear()
+            ax = fig.add_subplot(111)
+            ax.text(0.5, 0.5, f"绘制射线路径图失败: {str(e)}", 
+                    ha='center', va='center', transform=ax.transAxes,
+                    fontsize=12, color='red')
+            ax.set_axis_off()
+            self.view.canvas.draw()
     
     def draw_model_comparison(self, model_name):
         """绘制多模型对比图"""
@@ -393,53 +425,77 @@ class ModelSettingWidgetController:
             # 获取最大深度
             max_depth = self.view.depth_slider.value()
             
-            # 深度范围
-            depths = np.linspace(0, max_depth, 1000)  # 0-max_depth km
-            
-            # 不同模型的速度函数 (模拟数据)
-            velocity_profiles = {
-                "simple": lambda d: np.ones_like(d) * 6.0,  # 恒定速度
-                "iasp91": lambda d: 5.8 + 0.7 * np.log10(d + 1) + 0.02 * d * np.sin(d / 5),  # 变化的速度曲线
-                "ak135": lambda d: 5.8 + 0.75 * np.log10(d + 1) + 0.023 * d * np.sin(d / 4.8),
-                "prem": lambda d: 5.8 + 0.8 * np.log10(d + 1) + 0.025 * d * np.sin(d / 4.5),
-                "jb": lambda d: 5.8 + 0.73 * np.log10(d + 1) + 0.021 * d * np.sin(d / 5.2),
-                "sp6": lambda d: 5.8 + 0.76 * np.log10(d + 1) + 0.024 * d * np.sin(d / 4.9),
-                "1066a": lambda d: 5.8 + 0.72 * np.log10(d + 1) + 0.022 * d * np.sin(d / 5.1),
-                "ak135f": lambda d: 5.8 + 0.75 * np.log10(d + 1) + 0.023 * d * np.sin(d / 4.8),
-                "herrin": lambda d: 5.8 + 0.74 * np.log10(d + 1) + 0.022 * d * np.sin(d / 5.0)
-            }
-            
-            # 获取所有可用模型
-            available_models = self.model_manager.get_available_models()
-            
-            # 颜色列表用于区分不同模型
-            colors = ['r', 'g', 'b', 'c', 'm', 'y', 'orange', 'purple', 'brown', 'pink']
-            
             # 获取要对比的模型列表
             models_to_compare = []
             for item in self.view.compare_models_list.selectedItems():
                 models_to_compare.append(item.text())
-                
-            # 如果没有选择模型，默认使用当前选中的模型和simple模型
+            
+            # 如果没有选择模型，默认使用当前选中的模型
             if not models_to_compare:
-                models_to_compare = [model_name, "simple"]
+                models_to_compare = [model_name]
+            
+            # 颜色列表用于区分不同模型
+            colors = ['r', 'g', 'b', 'c', 'm', 'y', 'orange', 'purple', 'brown', 'pink']
+            
+            # 收集所有深度点以确保一致的图表范围
+            all_depths = []
+            all_vp_values = []
             
             # 绘制选中模型的P波速度曲线
             for i, model in enumerate(models_to_compare):
-                if i < len(colors):  # 限制绘制模型数量
-                    # 获取当前模型的速度函数
-                    velocity_func = velocity_profiles.get(model, velocity_profiles["simple"])
+                if i >= len(colors):  # 限制绘制模型数量
+                    break
+                
+                try:
+                    # 获取模型数据
+                    model_data = self.model_manager.get_model_data(model)
+                    if not model_data or "layers" not in model_data:
+                        self.view.status_text.append(f"警告: 模型 {model} 没有层数据，跳过绘制")
+                        continue
                     
-                    # 计算P波速度
-                    p_velocities = velocity_func(depths)
+                    # 提取深度和速度数据
+                    depths = []
+                    vp_values = []
+                    
+                    for layer in model_data["layers"]:
+                        depth = layer.get("depth")
+                        vp = layer.get("vp")
+                        
+                        if depth is None or vp is None:
+                            self.view.status_text.append(f"警告: 模型 {model} 的层数据不完整，缺少深度或P波速度")
+                            continue
+                        
+                        depths.append(depth)
+                        vp_values.append(vp)
+                    
+                    # 确保数据按深度排序
+                    sorted_data = sorted(zip(depths, vp_values), key=lambda x: x[0])
+                    depths = [d for d, _ in sorted_data]
+                    vp_values = [vp for _, vp in sorted_data]
+                    
+                    # 收集所有点
+                    all_depths.extend(depths)
+                    all_vp_values.extend(vp_values)
                     
                     # 绘制速度曲线
-                    ax.plot(p_velocities, depths, color=colors[i], linewidth=2, label=f'{model}')
+                    ax.plot(vp_values, depths, color=colors[i], linewidth=2, label=f'{model}')
+                    
+                except Exception as e:
+                    self.view.status_text.append(f"警告: 模型 {model} 绘制失败: {str(e)}")
+            
+            if not all_depths:  # 如果没有成功绘制任何模型
+                raise ValueError("没有足够的数据进行模型对比")
             
             # 设置坐标轴
             ax.set_xlabel('P波速度 (km/s)', fontsize=12)
             ax.set_ylabel('深度 (km)', fontsize=12)
             ax.set_ylim(max_depth, 0)  # 深度从0开始向下增加
+            
+            # 确保X轴显示所有速度值
+            min_vp = min(all_vp_values) * 0.95
+            max_vp = max(all_vp_values) * 1.05
+            ax.set_xlim(min_vp, max_vp)
+            
             ax.grid(True, linestyle='--', alpha=0.7)
             
             # 图表标题
@@ -455,6 +511,16 @@ class ModelSettingWidgetController:
         except Exception as e:
             print(f"绘制模型对比图失败: {e}")
             print(traceback.format_exc())
+            self.view.status_text.append(f"错误: 绘制模型对比图失败: {str(e)}")
+            
+            # 显示错误信息
+            fig.clear()
+            ax = fig.add_subplot(111)
+            ax.text(0.5, 0.5, f"绘制模型对比图失败: {str(e)}", 
+                    ha='center', va='center', transform=ax.transAxes,
+                    fontsize=12, color='red')
+            ax.set_axis_off()
+            self.view.canvas.draw()
     
     def draw_3d_model(self, model_name):
         """绘制3D模型可视化"""
@@ -473,6 +539,11 @@ class ModelSettingWidgetController:
             # 设置3D视角
             ax.view_init(elev=elevation, azim=azimuth)
             
+            # 获取模型数据
+            model_data = self.model_manager.get_model_data(model_name)
+            if not model_data or "layers" not in model_data:
+                raise ValueError(f"模型 {model_name} 没有层数据，无法绘制3D可视化")
+            
             # 地球半径(km)
             earth_radius = 6371.0
             
@@ -480,43 +551,40 @@ class ModelSettingWidgetController:
             u = np.linspace(0, 2 * np.pi, 100)
             v = np.linspace(0, np.pi, 100)
             
-            x = 0.95 * earth_radius * np.outer(np.cos(u), np.sin(v)) / 1000  # 转换到更小的刻度
-            y = 0.95 * earth_radius * np.outer(np.sin(u), np.sin(v)) / 1000
-            z = 0.95 * earth_radius * np.outer(np.ones(np.size(u)), np.cos(v)) / 1000
-            
             # 绘制地球表面
-            earth_surface = ax.plot_surface(x, y, z, color='lightblue', alpha=0.3)
+            x_surface = earth_radius * np.outer(np.cos(u), np.sin(v)) / 1000  # 缩小比例
+            y_surface = earth_radius * np.outer(np.sin(u), np.sin(v)) / 1000
+            z_surface = earth_radius * np.outer(np.ones(np.size(u)), np.cos(v)) / 1000
             
-            # 不同莫霍面深度
-            moho_depths = {
-                "simple": 35, "iasp91": 35, "ak135": 35, "prem": 24, 
-                "jb": 33, "sp6": 35, "1066a": 30, "ak135f": 35, "herrin": 33
-            }
-            moho_depth = moho_depths.get(model_name, 35)
+            ax.plot_surface(x_surface, y_surface, z_surface, color='lightblue', alpha=0.3)
             
-            # 绘制莫霍面
-            moho_factor = 1 - moho_depth / earth_radius
-            moho_x = moho_factor * x
-            moho_y = moho_factor * y
-            moho_z = moho_factor * z
-            
-            moho = ax.plot_surface(moho_x, moho_y, moho_z, color='green', alpha=0.3)
-            
-            # 绘制地核(模拟)
-            core_factor = 0.5  # 假设地核占地球半径的50%
-            core_x = core_factor * x
-            core_y = core_factor * y
-            core_z = core_factor * z
-            
-            core = ax.plot_surface(core_x, core_y, core_z, color='orange', alpha=0.5)
-            
-            # 绘制内核(模拟)
-            inner_core_factor = 0.2  # 假设内核占地球半径的20%
-            inner_x = inner_core_factor * x
-            inner_y = inner_core_factor * y
-            inner_z = inner_core_factor * z
-            
-            inner_core = ax.plot_surface(inner_x, inner_y, inner_z, color='red', alpha=0.7)
+            # 按深度绘制主要界面
+            for layer in model_data["layers"]:
+                depth = layer.get("depth")
+                if depth is None or depth <= 0:
+                    continue
+                    
+                # 计算球面缩放因子
+                scale_factor = (earth_radius - depth) / earth_radius
+                
+                # 创建该深度的球面
+                x_layer = scale_factor * x_surface
+                y_layer = scale_factor * y_surface
+                z_layer = scale_factor * z_surface
+                
+                # 使用P波速度作为颜色指标
+                vp = layer.get("vp", 0)
+                
+                # 绘制该层
+                ax.plot_surface(x_layer, y_layer, z_layer, 
+                                color=plt.cm.viridis(vp/10.0),  # 速度归一化作为颜色指标
+                                alpha=0.4, linewidth=0, antialiased=True)
+                
+                # 如果是重要界面，添加标记
+                if "name" in layer:
+                    layer_name = layer["name"]
+                    ax.text(x_layer[0, 0], y_layer[0, 0], z_layer[0, 0], 
+                            layer_name, color='black', fontsize=8)
             
             # 设置坐标轴标签
             ax.set_xlabel('X (1000 km)', fontsize=10)
@@ -526,6 +594,32 @@ class ModelSettingWidgetController:
             # 设置图表标题
             ax.set_title(f"{model_name}模型3D可视化", fontsize=14, fontweight='bold')
             
+            # 保持坐标轴比例一致
+            max_range = max(
+                np.max(x_surface) - np.min(x_surface),
+                np.max(y_surface) - np.min(y_surface),
+                np.max(z_surface) - np.min(z_surface)
+            )
+            mid_x = (np.max(x_surface) + np.min(x_surface)) * 0.5
+            mid_y = (np.max(y_surface) + np.min(y_surface)) * 0.5
+            mid_z = (np.max(z_surface) + np.min(z_surface)) * 0.5
+            ax.set_xlim(mid_x - max_range/2, mid_x + max_range/2)
+            ax.set_ylim(mid_y - max_range/2, mid_y + max_range/2)
+            ax.set_zlim(mid_z - max_range/2, mid_z + max_range/2)
+            
+            # 添加颜色条表示速度范围
+            from matplotlib.colors import Normalize
+            import matplotlib.cm as cm
+            
+            # 收集所有P波速度值
+            vp_values = [layer.get("vp", 0) for layer in model_data["layers"] if "vp" in layer]
+            if vp_values:
+                norm = Normalize(vmin=min(vp_values), vmax=max(vp_values))
+                sm = plt.cm.ScalarMappable(cmap=plt.cm.viridis, norm=norm)
+                sm.set_array([])
+                cbar = plt.colorbar(sm, ax=ax, shrink=0.5, aspect=10)
+                cbar.set_label('P波速度 (km/s)')
+            
             # 更新图表布局
             fig.tight_layout()
             self.view.canvas.draw()
@@ -533,6 +627,16 @@ class ModelSettingWidgetController:
         except Exception as e:
             print(f"绘制3D模型失败: {e}")
             print(traceback.format_exc())
+            self.view.status_text.append(f"错误: 绘制3D模型失败: {str(e)}")
+            
+            # 显示错误信息
+            fig.clear()
+            ax = fig.add_subplot(111)
+            ax.text(0.5, 0.5, f"绘制3D模型失败: {str(e)}", 
+                    ha='center', va='center', transform=ax.transAxes,
+                    fontsize=12, color='red')
+            ax.set_axis_off()
+            self.view.canvas.draw()
     
     def handle_apply_model(self):
         """应用所选模型"""
@@ -607,4 +711,109 @@ class ModelSettingWidgetController:
         except Exception as e:
             print(f"验证模型失败: {e}")
             print(traceback.format_exc())
-            QMessageBox.warning(self.view, "错误", f"验证模型失败: {str(e)}") 
+            QMessageBox.warning(self.view, "错误", f"验证模型失败: {str(e)}")
+    
+    def handle_custom_model(self):
+        """
+        处理自定义模型按钮点击事件
+        
+        打开自定义模型对话框，允许用户创建或编辑模型
+        """
+        try:
+            # 获取当前所有可用模型，用于模板选择
+            available_models = self.model_manager.get_available_models()
+            
+            # 创建自定义模型对话框
+            dialog = CustomModelDialog(self.view)
+            
+            # 为对话框添加现有模型作为模板
+            dialog.set_available_templates(available_models)
+            
+            # 连接模型变更信号到刷新方法
+            dialog.model_changed.connect(self._on_model_changed)
+            
+            # 显示对话框并等待用户操作
+            result = dialog.exec()
+            
+            # 用户点击了确定按钮，dialog内部会处理模型保存，这里只需刷新界面
+            if result:
+                # 刷新模型列表
+                self.model_manager.refresh_models()
+                self.populate_model_list()
+                
+                # 输出日志
+                self.view.status_text.append("自定义模型已创建并保存")
+                
+        except Exception as e:
+            print(f"处理自定义模型时出错: {e}")
+            import traceback
+            traceback.print_exc()
+            QMessageBox.warning(self.view, "错误", f"处理自定义模型失败: {str(e)}")
+    
+    def _on_model_changed(self, model_name):
+        """
+        当模型变更时的回调函数
+        
+        参数:
+        model_name: 变更的模型名称
+        """
+        # 刷新模型列表
+        self.model_manager.refresh_models()
+        self.populate_model_list()
+        
+        # 选择新创建/编辑的模型
+        index = self.view.model_select_combobox.findText(model_name)
+        if index >= 0:
+            self.view.model_select_combobox.setCurrentIndex(index)
+            # 触发模型选择变更
+            self.handle_model_selection_change()
+    
+    def handle_delete_model(self):
+        """
+        处理删除自定义模型按钮点击事件
+        
+        只能删除自定义模型，不能删除内置模型
+        """
+        try:
+            # 获取当前选择的模型名称
+            selected_model = self.view.model_select_combobox.currentText()
+            if not selected_model:
+                QMessageBox.warning(self.view, "警告", "请先选择一个模型")
+                return
+            
+            # 确认是否删除
+            reply = QMessageBox.question(
+                self.view,
+                "确认删除",
+                f"确定要删除模型 {selected_model} 吗？此操作不可恢复！",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No
+            )
+            
+            if reply != QMessageBox.StandardButton.Yes:
+                return
+            
+            # 使用ModelManager的delete_model方法删除模型
+            if self.model_manager.delete_model(selected_model):
+                # 成功删除，刷新模型列表
+                self.model_manager.refresh_models()
+                self.populate_model_list()
+                
+                # 输出状态信息
+                self.view.status_text.append(f"已删除模型: {selected_model}")
+                
+                # 检查当前模型是否还存在，如果不存在则选择第一个可用模型
+                current_model = self.view.model_select_combobox.currentText()
+                if not current_model:
+                    if self.view.model_select_combobox.count() > 0:
+                        self.view.model_select_combobox.setCurrentIndex(0)
+                        self.handle_model_selection_change()
+            else:
+                # 删除失败
+                QMessageBox.warning(self.view, "错误", f"删除模型 {selected_model} 失败")
+            
+        except Exception as e:
+            print(f"处理删除模型时出错: {e}")
+            import traceback
+            traceback.print_exc()
+            QMessageBox.warning(self.view, "错误", f"删除模型失败: {str(e)}")

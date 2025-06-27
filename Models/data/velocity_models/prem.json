@@ -1,0 +1,115 @@
+{
+    "name": "PREM",
+    "description": "PREM（初步参考地球模型）是由Dziewonski和Anderson于1981年发布的全球参考地球模型，是地球物理学中最经典的地球内部结构模型。",
+    "source": "Dziewonski, A.M., and D.L. Anderson (1981). Preliminary reference Earth model. Phys. Earth Planet. Inter., 25, 297-356.",
+    "parameters": {
+        "earth_radius": {
+            "value": 6371.0,
+            "unit": "km",
+            "description": "地球半径"
+        },
+        "cmb_depth": {
+            "value": 2891.0,
+            "unit": "km",
+            "description": "核幔边界深度"
+        },
+        "icb_depth": {
+            "value": 5149.5,
+            "unit": "km",
+            "description": "内外核边界深度"
+        }
+    },
+    "layers": [
+        {
+            "depth": 0.0,
+            "vp": 5.8,
+            "vs": 3.2,
+            "density": 2.6,
+            "description": "地壳顶部"
+        },
+        {
+            "depth": 15.0,
+            "vp": 6.8,
+            "vs": 3.9,
+            "density": 2.9,
+            "description": "地壳底部"
+        },
+        {
+            "depth": 24.4,
+            "vp": 8.11,
+            "vs": 4.49,
+            "density": 3.38,
+            "description": "岩石圈顶部"
+        },
+        {
+            "depth": 80.0,
+            "vp": 8.08,
+            "vs": 4.48,
+            "density": 3.37,
+            "description": "低速区顶部"
+        },
+        {
+            "depth": 220.0,
+            "vp": 8.56,
+            "vs": 4.64,
+            "density": 3.44,
+            "description": "过渡带顶部"
+        },
+        {
+            "depth": 400.0,
+            "vp": 9.03,
+            "vs": 4.87,
+            "density": 3.54,
+            "description": "400km不连续面"
+        },
+        {
+            "depth": 670.0,
+            "vp": 10.75,
+            "vs": 5.95,
+            "density": 3.99,
+            "description": "670km不连续面"
+        },
+        {
+            "depth": 771.0,
+            "vp": 11.06,
+            "vs": 6.24,
+            "density": 4.38,
+            "description": "下地幔顶部"
+        },
+        {
+            "depth": 2741.0,
+            "vp": 13.68,
+            "vs": 7.26,
+            "density": 5.57,
+            "description": "D\"层顶部"
+        },
+        {
+            "depth": 2891.0,
+            "vp": 8.06,
+            "vs": 0.0,
+            "density": 9.9,
+            "description": "核幔边界"
+        },
+        {
+            "depth": 3480.0,
+            "vp": 10.36,
+            "vs": 0.0,
+            "density": 11.06,
+            "description": "外核顶部"
+        },
+        {
+            "depth": 5149.5,
+            "vp": 11.03,
+            "vs": 3.5,
+            "density": 12.76,
+            "description": "内外核边界"
+        },
+        {
+            "depth": 6371.0,
+            "vp": 11.26,
+            "vs": 3.67,
+            "density": 13.09,
+            "description": "地球中心"
+        }
+    ]
+} 

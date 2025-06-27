@@ -31,48 +31,158 @@ matplotlib.rcParams['axes.unicode_minus'] = False  # 解决负号显示问题
 
 # 简单的恒定速度模型
 class SimpleVelocityModel:
-    def __init__(self):
-        self.model_name = "simple"
-        self.p_velocity = 5000  # 默认P波速度，单位m/s
-        self.s_velocity = self.p_velocity / 1.7  # 默认S波速度，P/S ≈ 1.7
-        
-    def calculate_time_delay(self, source_pos, receiver_pos, fixed_speed=None, phase="P"):
+    """简单的速度模型，使用固定的P波和S波速度"""
+    
+    def __init__(self, model_name="simple", vp=5.5, vs=3.0):
         """
-        计算从震源到检波器的传播时间
+        初始化简单速度模型
         
         参数:
-        source_pos: (x, y, z) 震源位置
-        receiver_pos: (x, y, z) 检波器位置
-        fixed_speed: 如果提供，将使用此速度而非模型速度
-        phase: 选择波相（"P" 或 "S"）
+        model_name: 模型名称
+        vp: P波速度(km/s)
+        vs: S波速度(km/s)
+        """
+        self.model_name = model_name
+        self.vp = vp  # P波速度(km/s)
+        self.vs = vs  # S波速度(km/s)
+        
+        # 基本参数
+        self.parameters = {
+            "earth_radius": 6371.0,  # 地球半径(km)
+            "moho_depth": 35.0,      # 莫霍面深度(km)
+            "cmb_depth": 2891.0,     # 核幔边界深度(km)
+            "icb_depth": 5150.0      # 内外核边界深度(km)
+        }
+        
+        # 层数据
+        self.layers = []
+    
+    def to_json(self):
+        """
+        将模型转换为JSON格式的数据
         
         返回:
-        传播时间(秒)
+        dict: 表示模型的字典，可以被json.dumps()序列化
+        """
+        # 构建参数字典
+        params = {}
+        for param_name, value in self.parameters.items():
+            params[param_name] = {
+                "value": value,
+                "unit": "km" if "depth" in param_name or param_name == "earth_radius" else ""
+            }
+        
+        # 如果没有层数据，创建一个简单的单层模型
+        if not self.layers:
+            self.layers = [
+                {"depth": 0, "vp": self.vp, "vs": self.vs, "density": 2.7},
+                {"depth": 35, "vp": 6.5, "vs": 3.7, "density": 2.9},
+                {"depth": 100, "vp": 8.1, "vs": 4.5, "density": 3.3},
+                {"depth": 300, "vp": 8.3, "vs": 4.7, "density": 3.5}
+            ]
+        
+        # 构建完整的模型数据
+        model_data = {
+            "name": self.model_name,
+            "description": f"简单速度模型 (P波: {self.vp} km/s, S波: {self.vs} km/s)",
+            "source": "用户自定义",
+            "parameters": params,
+            "layers": self.layers
+        }
+        
+        return model_data
+    
+    def load_from_json(self, data):
+        """
+        从JSON数据加载模型参数
+        
+        参数:
+        data: JSON数据(字典格式)
+        """
+        if not data:
+            return
+            
+        # 加载基本属性
+        self.model_name = data.get("name", self.model_name)
+        
+        # 加载基本参数
+        if "parameters" in data:
+            for param_name, param_data in data["parameters"].items():
+                if isinstance(param_data, dict) and "value" in param_data:
+                    value = param_data["value"]
+                else:
+                    value = param_data  # 简单格式，直接使用值
+                self.parameters[param_name] = value if isinstance(value, dict) else {"value": value}
+        
+        # 加载层数据
+        if "layers" in data:
+            self.layers = []
+            for layer_data in data["layers"]:
+                # 确保所有必需字段都存在
+                layer = {
+                    "depth": layer_data.get("depth", 0),
+                    "vp": layer_data.get("vp", 0),
+                    "vs": layer_data.get("vs", 0),
+                    "density": layer_data.get("density", 0)
+                }
+                
+                # 如果有描述字段，也加载
+                if "description" in layer_data:
+                    layer["description"] = layer_data["description"]
+                
+                self.layers.append(layer)
+            
+            # 按深度排序
+            self.layers.sort(key=lambda x: x["depth"])
+        
+        # 更新基本P波和S波速度 (取第一层或平均值)
+        if self.layers:
+            # 取第一层的速度值作为基本速度
+            self.vp = self.layers[0].get("vp", self.vp)
+            self.vs = self.layers[0].get("vs", self.vs)
+        
+        return self
+    
+    def calculate_time_delay(self, source_pos, receiver_pos, fixed_speed=None, phase="P"):
+        """
+        计算从震源到接收器的时间延迟
+        
+        参数:
+        source_pos: 震源位置(x, y, z)，单位为米
+        receiver_pos: 接收器位置(x, y, z)，单位为米
+        fixed_speed: 固定速度值，单位为km/s，如果提供则使用此速度
+        phase: 波相位，"P"或"S"
+        
+        返回:
+        时间延迟(秒)
         """
         try:
-            # 计算距离
-            dx = source_pos[0] - receiver_pos[0]
-            dy = source_pos[1] - receiver_pos[1]
-            dz = source_pos[2] - receiver_pos[2]
-            distance = math.sqrt(dx**2 + dy**2 + dz**2)
+            # 计算震源和接收器之间的距离(米)
+            distance = ((source_pos[0] - receiver_pos[0])**2 + 
+                      (source_pos[1] - receiver_pos[1])**2 + 
+                      (source_pos[2] - receiver_pos[2])**2)**0.5
             
-            # 根据波相选择速度
+            # 转换为km
+            distance_km = distance / 1000.0
+            
+            # 根据波相选择速度(km/s)
             if fixed_speed is not None:
                 velocity = fixed_speed
             elif phase.upper() == "P":
-                velocity = self.p_velocity
+                velocity = self.vp
             elif phase.upper() == "S":
-                velocity = self.s_velocity
+                velocity = self.vs
             else:
                 print(f"未知波相: {phase}，使用P波速度")
-                velocity = self.p_velocity
+                velocity = self.vp
             
-            # 计算时间
-            return distance / velocity
+            # 计算时间(s)
+            time_delay = distance_km / velocity
+            
+            return time_delay
+            
         except Exception as e:
-            print(f"简单模型计算时间延迟失败: {e}")
-            print(traceback.format_exc())
-            # 发生错误时返回一个安全值
+            print(f"计算时间延迟时出错: {e}")
             return 0.0
 
 # ObsPy的地球模型包装类
@@ -343,71 +453,42 @@ class VelocityModel(QObject):
         计算从震源到接收器的时间延迟
         
         参数:
-        source_pos: 震源位置(x, y, z)，单位米
-        receiver_pos: 接收器位置(x, y, z)，单位米
-        fixed_speed: 固定速度值(m/s)，仅用于简单模型
-        phase: 波相位，默认为P
+        source_pos: 震源位置(x, y, z)，单位为米
+        receiver_pos: 接收器位置(x, y, z)，单位为米
+        fixed_speed: 固定速度值，单位为km/s，如果提供则使用此速度
+        phase: 波相位，"P"或"S"
         
         返回:
         时间延迟(秒)
         """
-        # 计算直线距离(米)
         try:
-            distance = np.sqrt(
-                (source_pos[0] - receiver_pos[0])**2 + 
-                (source_pos[1] - receiver_pos[1])**2 + 
-                (source_pos[2] - receiver_pos[2])**2
-            )
-        except Exception as e:
-            self.add_debug_info(f"计算距离时出错: {e}, 使用默认距离1000m")
-            distance = 1000.0  # 默认距离
-        
-        if self.is_simple_model or self.model is None or fixed_speed is not None:
-            # 使用简单速度模型：距离/速度
-            speed = fixed_speed if fixed_speed is not None else 5500.0  # 默认P波速度(m/s)
-            delay = distance / speed
-            self.add_debug_info(f"使用简单模型计算：距离={distance:.2f}m, 速度={speed:.2f}m/s, 延迟={delay:.4f}s")
-            return delay
-        
-        try:
-            # 计算震源深度(km)，假设z轴正方向向下
-            source_depth = abs(source_pos[2]) / 1000.0  # 转换为公里
+            # 计算震源和接收器之间的距离(米)
+            distance = ((source_pos[0] - receiver_pos[0])**2 + 
+                      (source_pos[1] - receiver_pos[1])**2 + 
+                      (source_pos[2] - receiver_pos[2])**2)**0.5
             
-            # 计算水平距离(度)
-            # 这里使用简化转换：1度约111km
-            horizontal_distance = np.sqrt(
-                (source_pos[0] - receiver_pos[0])**2 + 
-                (source_pos[1] - receiver_pos[1])**2
-            ) / 111000.0
+            # 转换为km
+            distance_km = distance / 1000.0
             
-            # 检查参数合法性
-            if np.isnan(source_depth) or np.isnan(horizontal_distance):
-                raise ValueError("深度或距离计算结果为NaN")
-            
-            # 获取到达时间
-            arrivals = self.get_travel_time(source_depth, horizontal_distance, [phase])
-            
-            if arrivals:
-                delay = arrivals[0].time
-                self.add_debug_info(f"使用{self.model_name}模型计算：深度={source_depth:.2f}km, " +
-                               f"水平距离={horizontal_distance:.4f}度, 相位={phase}, 延迟={delay:.4f}s")
-                return delay
+            # 根据波相选择速度(km/s)
+            if fixed_speed is not None:
+                velocity = fixed_speed
+            elif phase.upper() == "P":
+                velocity = self.vp
+            elif phase.upper() == "S":
+                velocity = self.vs
             else:
-                # 如果没有计算出到达时间，回退到简单的距离/速度计算
-                if phase.upper().startswith("P"):
-                    velocity = 5500.0  # P波速度(m/s)
-                else:
-                    velocity = 3200.0  # S波速度(m/s)
-                delay = distance / velocity
-                self.add_debug_info(f"ObsPy未返回到达时间，使用简单模型：距离={distance:.2f}m, " + 
-                               f"速度={velocity:.2f}m/s, 延迟={delay:.4f}s")
-                return delay
+                print(f"未知波相: {phase}，使用P波速度")
+                velocity = self.vp
+            
+            # 计算时间(s)
+            time_delay = distance_km / velocity
+            
+            return time_delay
+            
         except Exception as e:
-            # 任何异常情况，回退到简单计算
-            self.add_debug_info(f"计算时间延迟时出错: {e}, 使用简单模型")
-            delay = distance / 5500.0  # 默认P波速度(m/s)
-            self.add_debug_info(f"出错后使用简单模型：距离={distance:.2f}m, 速度=5500.00m/s, 延迟={delay:.4f}s")
-            return delay
+            print(f"计算时间延迟时出错: {e}")
+            return 0.0
     
     def plot_velocity_profile(self, max_depth=700):
         """

@@ -1,0 +1,115 @@
+{
+    "name": "JB",
+    "description": "Jeffreys-Bullen模型是经典的地球参考模型，由Harold Jeffreys和K. E. Bullen于1940年代创建，曾长期作为地震学走时表的标准模型。",
+    "source": "Jeffreys, H., & Bullen, K. E. (1940). Seismological Tables. British Association for the Advancement of Science, London.",
+    "parameters": {
+        "earth_radius": {
+            "value": 6371.0,
+            "unit": "km",
+            "description": "地球半径"
+        },
+        "cmb_depth": {
+            "value": 2898.0,
+            "unit": "km",
+            "description": "核幔边界深度"
+        },
+        "icb_depth": {
+            "value": 5158.0,
+            "unit": "km",
+            "description": "内外核边界深度"
+        }
+    },
+    "layers": [
+        {
+            "depth": 0.0,
+            "vp": 5.57,
+            "vs": 3.36,
+            "density": 2.75,
+            "description": "地壳顶部"
+        },
+        {
+            "depth": 15.0,
+            "vp": 6.50,
+            "vs": 3.72,
+            "density": 2.92,
+            "description": "地壳下部"
+        },
+        {
+            "depth": 33.0,
+            "vp": 8.10,
+            "vs": 4.49,
+            "density": 3.32,
+            "description": "上地幔顶部"
+        },
+        {
+            "depth": 413.0,
+            "vp": 9.03,
+            "vs": 4.87,
+            "density": 3.52,
+            "description": "410km不连续面"
+        },
+        {
+            "depth": 670.0,
+            "vp": 10.27,
+            "vs": 5.57,
+            "density": 3.99,
+            "description": "670km不连续面"
+        },
+        {
+            "depth": 1000.0,
+            "vp": 11.14,
+            "vs": 6.13,
+            "density": 4.40,
+            "description": "下地幔1000km"
+        },
+        {
+            "depth": 2000.0,
+            "vp": 12.90,
+            "vs": 6.93,
+            "density": 5.00,
+            "description": "下地幔2000km"
+        },
+        {
+            "depth": 2898.0,
+            "vp": 13.70,
+            "vs": 7.25,
+            "density": 5.55,
+            "description": "核幔边界"
+        },
+        {
+            "depth": 2898.1,
+            "vp": 8.00,
+            "vs": 0.0,
+            "density": 9.90,
+            "description": "外核顶部"
+        },
+        {
+            "depth": 3500.0,
+            "vp": 9.21,
+            "vs": 0.0,
+            "density": 10.80,
+            "description": "外核中段"
+        },
+        {
+            "depth": 5158.0,
+            "vp": 10.40,
+            "vs": 0.0,
+            "density": 12.10,
+            "description": "内外核边界"
+        },
+        {
+            "depth": 5158.1,
+            "vp": 11.00,
+            "vs": 3.50,
+            "density": 12.20,
+            "description": "内核顶部"
+        },
+        {
+            "depth": 6371.0,
+            "vp": 11.40,
+            "vs": 3.68,
+            "density": 13.10,
+            "description": "地球中心"
+        }
+    ]
+} 

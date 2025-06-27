@@ -46,7 +46,6 @@ class SourceDetectionWidgetController:
         # 连接新增的颜色方案和分辨率控制
         self.view.colormap_combo.currentIndexChanged.connect(self.handle_colormap_change)
         self.view.resolution_combo.currentIndexChanged.connect(self.handle_resolution_change)
-        self.view.slice_direction_combo.currentIndexChanged.connect(self.handle_slice_direction_change)
 
     # 确保模型已初始化
     def _ensure_model_initialized(self):
@@ -1621,11 +1620,3 @@ class SourceDetectionWidgetController:
             
             self._resolution_timer.start(300)  # 300毫秒后更新可视化
             print(f"分辨率已更改为: {self.view.resolution_combo.currentText()}")
-    
-    # 处理切片方向变更
-    def handle_slice_direction_change(self, index):
-        """处理切片方向变更事件"""
-        # 只在有结果时且在切片模式下更新显示
-        if self.last_result and self.view.view_slice_radio.isChecked():
-            self.update_visualization()
-            print(f"切片方向已更改为: {self.view.slice_direction_combo.currentText()}")

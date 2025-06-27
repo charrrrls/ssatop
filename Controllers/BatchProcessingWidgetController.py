@@ -188,23 +188,83 @@ class BatchProcessingWidgetController(QObject):
             QMessageBox.information(self.view, "提示", "没有可导出的结果")
             return
         
-        # 打开文件对话框选择保存路径
-        save_path, _ = QFileDialog.getSaveFileName(
-            self.view, "导出结果", "", "CSV文件 (*.csv);;所有文件 (*.*)"
-        )
-        
-        if not save_path:
-            return
-        
+        # 直接调用视图的导出功能，并传递results数据
         try:
-            # 创建DataFrame并保存为CSV
-            import pandas as pd
-            df = pd.DataFrame(self.results)
-            df.to_csv(save_path, index=False)
+            # 打开文件对话框选择保存路径
+            file_dialog = QFileDialog(self.view)
+            file_dialog.setAcceptMode(QFileDialog.AcceptMode.AcceptSave)
+            file_dialog.setFileMode(QFileDialog.FileMode.AnyFile)
+            file_dialog.setNameFilter("CSV文件 (*.csv);;Excel文件 (*.xlsx)")
+            file_dialog.setDefaultSuffix("csv")
             
-            QMessageBox.information(self.view, "导出成功", f"结果已导出到 {save_path}")
+            if not file_dialog.exec():
+                return
+                
+            selected_files = file_dialog.selectedFiles()
+            if not selected_files:
+                return
+                
+            file_path = selected_files[0]
+            
+            # 根据文件扩展名选择导出格式
+            if file_path.lower().endswith(".csv"):
+                self.export_as_csv(file_path)
+            elif file_path.lower().endswith(".xlsx"):
+                self.export_as_excel(file_path)
+            else:
+                # 默认导出为CSV
+                if not file_path.lower().endswith(".csv"):
+                    file_path += ".csv"
+                self.export_as_csv(file_path)
+                
+            QMessageBox.information(self.view, "成功", f"结果已成功导出到:\n{file_path}")
+            self.view.status_label.setText(f"结果已导出到: {file_path}")
+                
         except Exception as e:
-            QMessageBox.critical(self.view, "导出失败", f"导出结果时出错: {str(e)}")
+            QMessageBox.critical(self.view, "错误", f"导出失败: {str(e)}")
+            self.view.status_label.setText("导出失败")
+            
+    def export_as_csv(self, file_path):
+        """导出为CSV格式"""
+        import csv
+        
+        with open(file_path, 'w', newline='', encoding='utf-8-sig') as csvfile:
+            writer = csv.writer(csvfile)
+            
+            # 写入表头
+            headers = ["文件名", "X坐标", "Y坐标", "Z坐标", "亮度"]
+            writer.writerow(headers)
+            
+            # 写入数据行
+            for result in self.results:
+                writer.writerow([
+                    result["文件名"],
+                    result["X坐标"],
+                    result["Y坐标"],
+                    result["Z坐标"],
+                    result["亮度"]
+                ])
+                
+    def export_as_excel(self, file_path):
+        """导出为Excel格式"""
+        try:
+            import pandas as pd
+            
+            # 创建DataFrame并导出
+            df = pd.DataFrame(self.results)
+            df.to_excel(file_path, index=False)
+            
+        except ImportError:
+            # 如果pandas不可用，提示用户
+            QMessageBox.warning(
+                self.view, 
+                "缺少依赖", 
+                "导出Excel需要pandas库。将改为导出CSV格式。"
+            )
+            # 改用CSV格式导出
+            if file_path.lower().endswith(".xlsx"):
+                file_path = file_path[:-5] + ".csv"
+            self.export_as_csv(file_path)
     
     def format_time(self, seconds):
         """格式化时间为易读格式"""
@@ -486,6 +546,15 @@ class BatchProcessingWidgetController(QObject):
                         x, y, z = max_point[:3]
                         brightness = max_brightness
                         self.add_result_signal.emit(os.path.basename(wave_file), float(x), float(y), float(z), float(brightness))
+                        
+                        # 保存结果到results列表
+                        self.results.append({
+                            "文件名": os.path.basename(wave_file),
+                            "X坐标": float(x),
+                            "Y坐标": float(y),
+                            "Z坐标": float(z),
+                            "亮度": float(brightness)
+                        })
             
             # 处理下一个文件
             self.process_next_file()
@@ -543,8 +612,8 @@ class BatchProcessingWidgetController(QObject):
         self.view.remove_files_btn.setEnabled(True)
         self.view.clear_files_btn.setEnabled(True)
         
-        # 如果有结果，启用导出按钮
-        if self.results:
+        # 如果有结果或者结果表格中有数据，启用导出按钮
+        if self.results or self.view.result_table.rowCount() > 0:
             self.view.export_results_btn.setEnabled(True)
         
         # 更新总体进度为100%

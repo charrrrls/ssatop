@@ -1,0 +1,178 @@
+{
+    "name": "HERRIN",
+    "description": "Herrin模型由E. Herrin及其同事于1968年提出，该模型曾被国际地震中心(ISC)用于全球地震定位，长期作为地震学研究的参考标准。",
+    "source": "Herrin, E., Tucker, W., Taggart, J., Gordon, D. W., & Lobdell, J. L. (1968). Estimation of surface focus P travel times. Bulletin of the Seismological Society of America, 58(4), 1273-1291.",
+    "parameters": {
+        "earth_radius": {
+            "value": 6371.0,
+            "unit": "km",
+            "description": "地球半径"
+        },
+        "cmb_depth": {
+            "value": 2900.0,
+            "unit": "km",
+            "description": "核幔边界深度"
+        },
+        "icb_depth": {
+            "value": 5155.0,
+            "unit": "km",
+            "description": "内外核边界深度"
+        }
+    },
+    "layers": [
+        {
+            "depth": 0.0,
+            "vp": 5.80,
+            "vs": 3.35,
+            "density": 2.65,
+            "description": "地壳顶部"
+        },
+        {
+            "depth": 10.0,
+            "vp": 6.00,
+            "vs": 3.45,
+            "density": 2.80,
+            "description": "地壳"
+        },
+        {
+            "depth": 35.0,
+            "vp": 8.05,
+            "vs": 4.50,
+            "density": 3.31,
+            "description": "上地幔顶部(莫霍面)"
+        },
+        {
+            "depth": 50.0,
+            "vp": 8.05,
+            "vs": 4.51,
+            "density": 3.33,
+            "description": "上地幔"
+        },
+        {
+            "depth": 70.0,
+            "vp": 8.07,
+            "vs": 4.53,
+            "density": 3.35,
+            "description": "上地幔"
+        },
+        {
+            "depth": 150.0,
+            "vp": 8.10,
+            "vs": 4.45,
+            "density": 3.38,
+            "description": "低速层"
+        },
+        {
+            "depth": 200.0,
+            "vp": 8.15,
+            "vs": 4.49,
+            "density": 3.42,
+            "description": "上地幔过渡带"
+        },
+        {
+            "depth": 413.0,
+            "vp": 9.03,
+            "vs": 4.87,
+            "density": 3.65,
+            "description": "410km不连续面"
+        },
+        {
+            "depth": 650.0,
+            "vp": 10.15,
+            "vs": 5.51,
+            "density": 4.05,
+            "description": "650km不连续面"
+        },
+        {
+            "depth": 700.0,
+            "vp": 10.75,
+            "vs": 5.98,
+            "density": 4.35,
+            "description": "下地幔顶部"
+        },
+        {
+            "depth": 1000.0,
+            "vp": 11.39,
+            "vs": 6.26,
+            "density": 4.61,
+            "description": "下地幔"
+        },
+        {
+            "depth": 1500.0,
+            "vp": 11.98,
+            "vs": 6.60,
+            "density": 4.85,
+            "description": "下地幔"
+        },
+        {
+            "depth": 2000.0,
+            "vp": 12.75,
+            "vs": 6.90,
+            "density": 5.10,
+            "description": "下地幔"
+        },
+        {
+            "depth": 2500.0,
+            "vp": 13.18,
+            "vs": 7.12,
+            "density": 5.32,
+            "description": "下地幔"
+        },
+        {
+            "depth": 2900.0,
+            "vp": 13.68,
+            "vs": 7.30,
+            "density": 5.56,
+            "description": "核幔边界"
+        },
+        {
+            "depth": 2900.1,
+            "vp": 8.10,
+            "vs": 0.0,
+            "density": 9.90,
+            "description": "外核顶部"
+        },
+        {
+            "depth": 3600.0,
+            "vp": 9.44,
+            "vs": 0.0,
+            "density": 11.02,
+            "description": "外核"
+        },
+        {
+            "depth": 4500.0,
+            "vp": 10.29,
+            "vs": 0.0,
+            "density": 11.80,
+            "description": "外核"
+        },
+        {
+            "depth": 5155.0,
+            "vp": 10.88,
+            "vs": 0.0,
+            "density": 12.22,
+            "description": "内外核边界"
+        },
+        {
+            "depth": 5155.1,
+            "vp": 11.14,
+            "vs": 3.44,
+            "density": 12.79,
+            "description": "内核顶部"
+        },
+        {
+            "depth": 5800.0,
+            "vp": 11.27,
+            "vs": 3.58,
+            "density": 12.94,
+            "description": "内核"
+        },
+        {
+            "depth": 6371.0,
+            "vp": 11.30,
+            "vs": 3.65,
+            "density": 13.08,
+            "description": "地球中心"
+        }
+    ]
+} 

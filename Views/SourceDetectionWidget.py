@@ -74,11 +74,6 @@ class SourceDetectionWidget(QWidget):
         self.slice_slider.setRange(0, 100)
         self.slice_slider.setValue(50)
         
-        # 切片方向选择
-        self.slice_direction_label = QLabel("切片方向:")
-        self.slice_direction_combo = QComboBox()
-        self.slice_direction_combo.addItems(["XY平面(Z切片)", "XZ平面(Y切片)", "YZ平面(X切片)"])
-        
         # 精简后的网格设置控件
         self.grid_group = QGroupBox("计算参数")
         self.grid_resolution_label = QLabel("网格精度:")
@@ -318,12 +313,6 @@ class SourceDetectionWidget(QWidget):
         slice_layout = QVBoxLayout()
         slice_layout.addWidget(self.slice_label)
         slice_layout.addWidget(self.slice_slider)
-        
-        # 切片方向选择
-        slice_direction_layout = QHBoxLayout()
-        slice_direction_layout.addWidget(self.slice_direction_label)
-        slice_direction_layout.addWidget(self.slice_direction_combo)
-        slice_layout.addLayout(slice_direction_layout)
         
         display_layout.addLayout(slice_layout)
         

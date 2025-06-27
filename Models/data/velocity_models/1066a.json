@@ -1,0 +1,199 @@
+{
+    "name": "1066A",
+    "description": "1066A地球模型由Gilbert和Dziewonski于1975年提出，是一个球对称非旋转地球的模型，通过地球自由振荡观测数据推导得出。",
+    "source": "Gilbert, F., & Dziewonski, A. M. (1975). An application of normal mode theory to the retrieval of structural parameters and source mechanisms from seismic spectra. Philosophical Transactions of the Royal Society of London. Series A, 278(1280), 187-269.",
+    "parameters": {
+        "earth_radius": {
+            "value": 6371.0,
+            "unit": "km",
+            "description": "地球半径"
+        },
+        "cmb_depth": {
+            "value": 2895.0,
+            "unit": "km",
+            "description": "核幔边界深度"
+        },
+        "icb_depth": {
+            "value": 5121.0,
+            "unit": "km",
+            "description": "内外核边界深度"
+        }
+    },
+    "layers": [
+        {
+            "depth": 0.0,
+            "vp": 5.80,
+            "vs": 3.46,
+            "density": 2.72,
+            "description": "地壳顶部"
+        },
+        {
+            "depth": 15.0,
+            "vp": 5.80,
+            "vs": 3.46,
+            "density": 2.72,
+            "description": "地壳"
+        },
+        {
+            "depth": 15.1,
+            "vp": 6.80,
+            "vs": 3.90,
+            "density": 2.92,
+            "description": "地壳下部"
+        },
+        {
+            "depth": 25.0,
+            "vp": 6.80,
+            "vs": 3.90,
+            "density": 2.92,
+            "description": "地壳下部"
+        },
+        {
+            "depth": 25.1,
+            "vp": 8.10,
+            "vs": 4.52,
+            "density": 3.40,
+            "description": "上地幔顶部"
+        },
+        {
+            "depth": 80.0,
+            "vp": 8.10,
+            "vs": 4.52,
+            "density": 3.40,
+            "description": "上地幔"
+        },
+        {
+            "depth": 80.1,
+            "vp": 8.08,
+            "vs": 4.49,
+            "density": 3.38,
+            "description": "上地幔过渡带"
+        },
+        {
+            "depth": 215.0,
+            "vp": 8.08,
+            "vs": 4.49,
+            "density": 3.38,
+            "description": "上地幔过渡带"
+        },
+        {
+            "depth": 215.1,
+            "vp": 8.56,
+            "vs": 4.64,
+            "density": 3.44,
+            "description": "上地幔过渡带"
+        },
+        {
+            "depth": 400.0,
+            "vp": 8.56,
+            "vs": 4.64,
+            "density": 3.44,
+            "description": "过渡带顶部"
+        },
+        {
+            "depth": 400.1,
+            "vp": 9.24,
+            "vs": 4.93,
+            "density": 3.85,
+            "description": "410km不连续面"
+        },
+        {
+            "depth": 635.0,
+            "vp": 9.24,
+            "vs": 4.93,
+            "density": 3.85,
+            "description": "过渡带底部"
+        },
+        {
+            "depth": 635.1,
+            "vp": 10.00,
+            "vs": 5.35,
+            "density": 4.38,
+            "description": "660km不连续面"
+        },
+        {
+            "depth": 800.0,
+            "vp": 10.76,
+            "vs": 5.95,
+            "density": 4.52,
+            "description": "下地幔顶部"
+        },
+        {
+            "depth": 1200.0,
+            "vp": 11.27,
+            "vs": 6.26,
+            "density": 4.71,
+            "description": "下地幔"
+        },
+        {
+            "depth": 1600.0,
+            "vp": 11.73,
+            "vs": 6.51,
+            "density": 4.88,
+            "description": "下地幔"
+        },
+        {
+            "depth": 2000.0,
+            "vp": 12.13,
+            "vs": 6.73,
+            "density": 5.04,
+            "description": "下地幔"
+        },
+        {
+            "depth": 2400.0,
+            "vp": 12.54,
+            "vs": 6.93,
+            "density": 5.21,
+            "description": "下地幔"
+        },
+        {
+            "depth": 2895.0,
+            "vp": 13.65,
+            "vs": 7.26,
+            "density": 5.56,
+            "description": "核幔边界"
+        },
+        {
+            "depth": 2895.1,
+            "vp": 8.13,
+            "vs": 0.0,
+            "density": 9.91,
+            "description": "外核顶部"
+        },
+        {
+            "depth": 3600.0,
+            "vp": 9.44,
+            "vs": 0.0,
+            "density": 10.96,
+            "description": "外核"
+        },
+        {
+            "depth": 4500.0,
+            "vp": 10.10,
+            "vs": 0.0,
+            "density": 11.79,
+            "description": "外核"
+        },
+        {
+            "depth": 5121.0,
+            "vp": 10.36,
+            "vs": 0.0,
+            "density": 12.17,
+            "description": "内外核边界"
+        },
+        {
+            "depth": 5121.1,
+            "vp": 11.03,
+            "vs": 3.50,
+            "density": 12.76,
+            "description": "内核顶部"
+        },
+        {
+            "depth": 6371.0,
+            "vp": 11.26,
+            "vs": 3.67,
+            "density": 13.09,
+            "description": "地球中心"
+        }
+    ]
+} 

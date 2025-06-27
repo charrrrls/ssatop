@@ -1,0 +1,108 @@
+{
+    "name": "IASP91",
+    "description": "IASP91是国际常用的地球参考模型，由Kennett和Engdahl于1991年提出。该模型广泛用于地震定位和地震波走时计算。",
+    "source": "Kennett, B. L. N., & Engdahl, E. R. (1991). Traveltimes for global earthquake location and phase identification. Geophysical Journal International, 105(2), 429-465.",
+    "parameters": {
+        "earth_radius": {
+            "value": 6371.0,
+            "unit": "km",
+            "description": "地球半径"
+        },
+        "cmb_depth": {
+            "value": 2889.0,
+            "unit": "km",
+            "description": "核幔边界深度"
+        },
+        "icb_depth": {
+            "value": 5153.9,
+            "unit": "km",
+            "description": "内外核边界深度"
+        }
+    },
+    "layers": [
+        {
+            "depth": 0.0,
+            "vp": 5.8,
+            "vs": 3.36,
+            "density": 2.72,
+            "description": "地壳顶部"
+        },
+        {
+            "depth": 20.0,
+            "vp": 6.5,
+            "vs": 3.75,
+            "density": 2.92,
+            "description": "地壳下部"
+        },
+        {
+            "depth": 35.0,
+            "vp": 8.04,
+            "vs": 4.47,
+            "density": 3.32,
+            "description": "上地幔顶部"
+        },
+        {
+            "depth": 120.0,
+            "vp": 8.3,
+            "vs": 4.5,
+            "density": 3.35,
+            "description": "低速区底部"
+        },
+        {
+            "depth": 210.0,
+            "vp": 8.3,
+            "vs": 4.5,
+            "density": 3.4,
+            "description": "上地幔过渡带顶部"
+        },
+        {
+            "depth": 410.0,
+            "vp": 9.03,
+            "vs": 4.87,
+            "density": 3.56,
+            "description": "410km不连续面"
+        },
+        {
+            "depth": 660.0,
+            "vp": 10.2,
+            "vs": 5.61,
+            "density": 3.99,
+            "description": "660km不连续面"
+        },
+        {
+            "depth": 710.0,
+            "vp": 10.3,
+            "vs": 5.66,
+            "density": 4.05,
+            "description": "下地幔顶部"
+        },
+        {
+            "depth": 2740.0,
+            "vp": 13.649,
+            "vs": 7.264,
+            "density": 5.566,
+            "description": "下地幔底部"
+        },
+        {
+            "depth": 2889.0,
+            "vp": 8.009,
+            "vs": 0.0,
+            "density": 9.915,
+            "description": "核幔边界"
+        },
+        {
+            "depth": 5153.9,
+            "vp": 10.289,
+            "vs": 0.0,
+            "density": 12.166,
+            "description": "内外核边界"
+        },
+        {
+            "depth": 6371.0,
+            "vp": 11.262,
+            "vs": 3.5,
+            "density": 13.088,
+            "description": "地球中心"
+        }
+    ]
+} 
