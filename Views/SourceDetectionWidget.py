@@ -66,7 +66,7 @@ class SourceDetectionWidget(QWidget):
         self.resolution_label = QLabel("显示分辨率:")
         self.resolution_combo = QComboBox()
         self.resolution_combo.addItems(["低", "中", "高", "超高"])
-        self.resolution_combo.setCurrentIndex(1)  # 默认为中等分辨率
+        self.resolution_combo.setCurrentIndex(3)  # 默认为中等分辨率
         
         # 切片控制
         self.slice_label = QLabel("切片位置: 50%")

@@ -141,15 +141,12 @@ class SettingsWidgetController:
 
     def browse_file(self, file_type):
         """打开文件选择对话框"""
-        options = QFileDialog.Options()
-        
         if file_type == "sgy":
             file_path, _ = QFileDialog.getOpenFileName(
                 self.settings_widget, 
                 "选择SGY文件", 
                 "", 
-                "SGY文件 (*.sgy *.segy);;所有文件 (*)",
-                options=options
+                "SGY文件 (*.sgy *.segy);;所有文件 (*)"
             )
             if file_path:
                 self.settings_widget.config_sgy_path.setText(file_path)
@@ -159,8 +156,7 @@ class SettingsWidgetController:
                 self.settings_widget, 
                 "选择XLSX文件", 
                 "", 
-                "XLSX文件 (*.xlsx);;所有文件 (*)",
-                options=options
+                "XLSX文件 (*.xlsx);;所有文件 (*)"
             )
             if file_path:
                 self.settings_widget.config_xlsx_path.setText(file_path)

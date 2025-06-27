@@ -159,8 +159,21 @@ def calculate_heatmap(wave_data, location_data, sample_interval, time_range, upd
                 start_index = max(0, point_index - 50)
                 end_index = min(len(trace_data), point_index + 51)
                 
+                # 先检查切片是否为空
+                if start_index >= end_index or start_index >= len(trace_data) or end_index <= 0:
+                    return 0.0
+                
+                # 确保索引有效
+                start_index = min(start_index, len(trace_data) - 1)
+                end_index = min(end_index, len(trace_data))
+                
+                # 如果切片长度为0，直接返回0
+                data_slice = trace_data[start_index:end_index]
+                if len(data_slice) == 0:
+                    return 0.0
+                
                 # 计算前后50个点的绝对值并获取最大值
-                local_max = np.max(np.abs(trace_data[start_index:end_index]))
+                local_max = np.max(np.abs(data_slice))
                 
                 return local_max
             except Exception as e:

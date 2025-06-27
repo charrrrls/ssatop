@@ -3,13 +3,13 @@ Advanced:
   theme: dark
   use_gpu: 'False'
 Default:
-  default_sgy_path: 1.sgy
+  default_sgy_path: /Users/leion/Charles/ssatop_final/998.sgy
   default_xlsx_path: 检波器位置文件.xlsx
   height: '100'
   length: '1000'
   speed: '5500'
   time_slice: '0.2'
-  velocity_model: simple
+  velocity_model: iasp91
   z_max: '3700'
   z_min: '3200'
 Theme:
